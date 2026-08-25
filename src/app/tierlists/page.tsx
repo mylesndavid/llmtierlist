@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPublicTierLists } from "@/lib/data";
+import VendorLogo from "@/components/VendorLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -43,20 +44,22 @@ export default async function TierListsPage() {
               {/* mini board preview */}
               <div className="border-b border-edge bg-black/40 p-2">
                 <div className="space-y-px">
-                  {list.tiers.slice(0, 6).map((tier) => {
-                    const count = Math.min(list.tier_counts[tier.key] ?? 0, 14);
-                    return (
-                      <div key={tier.key} className="flex items-center gap-px">
+                  {list.tiers.slice(0, 6).map((tier) => (
+                    <div key={tier.key} className="flex items-center gap-px overflow-hidden">
+                      <span
+                        className="h-5 w-7 shrink-0"
+                        style={{ backgroundColor: tier.color }}
+                      />
+                      {(list.tier_previews[tier.key] ?? []).slice(0, 11).map((slug, i) => (
                         <span
-                          className="h-3.5 w-6 shrink-0"
-                          style={{ backgroundColor: tier.color }}
-                        />
-                        {Array.from({ length: count }).map((_, i) => (
-                          <span key={i} className="h-3.5 w-3.5 shrink-0 bg-surface-2" />
-                        ))}
-                      </div>
-                    );
-                  })}
+                          key={i}
+                          className="grid h-5 w-5 shrink-0 place-items-center bg-surface-2 p-0.5"
+                        >
+                          <VendorLogo vendorSlug={slug} className="h-full w-full" />
+                        </span>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="p-4">

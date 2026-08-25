@@ -169,8 +169,8 @@ export async function getTierListBySlug(
 
 export type BrowseTierList = TierList & {
   score: number;
-  /** item count per tier key, for the card mini-preview */
-  tier_counts: Record<string, number>;
+  /** ordered vendor slugs per tier key, for the card mini-preview logos */
+  tier_previews: Record<string, string[]>;
 };
 
 export async function getPublicTierLists(limit = 30): Promise<BrowseTierList[]> {
@@ -185,19 +185,20 @@ export async function getPublicTierLists(limit = 30): Promise<BrowseTierList[]> 
   const lists = rows.map((r) => ({ ...toTierList(r), score: r.score ?? 0 }));
   if (lists.length === 0) return [];
 
-  const counts = await d1Query<{ tier_list_id: string; tier: string; n: number }>(
-    `select tier_list_id, tier, count(*) as n from tier_list_items
-     where tier_list_id in (${lists.map(() => "?").join(",")})
-     group by tier_list_id, tier`,
+  const items = await d1Query<{ tier_list_id: string; tier: string; vendor_slug: string }>(
+    `select i.tier_list_id, i.tier, m.vendor_slug
+     from tier_list_items i join models m on m.id = i.model_id
+     where i.tier_list_id in (${lists.map(() => "?").join(",")})
+     order by i.tier_index, i.position`,
     lists.map((l) => l.id)
   );
-  const byList = new Map<string, Record<string, number>>();
-  for (const c of counts) {
-    const rec = byList.get(c.tier_list_id) ?? {};
-    rec[c.tier] = c.n;
-    byList.set(c.tier_list_id, rec);
+  const byList = new Map<string, Record<string, string[]>>();
+  for (const it of items) {
+    const rec = byList.get(it.tier_list_id) ?? {};
+    (rec[it.tier] ??= []).push(it.vendor_slug);
+    byList.set(it.tier_list_id, rec);
   }
-  return lists.map((l) => ({ ...l, tier_counts: byList.get(l.id) ?? {} }));
+  return lists.map((l) => ({ ...l, tier_previews: byList.get(l.id) ?? {} }));
 }
 
 export async function getProfileByUsername(username: string): Promise<PublicProfile | null> {
