@@ -38,6 +38,33 @@ async function logoDataUri(slug: string): Promise<string | null> {
 
 type OgModel = Pick<Model, "id" | "name" | "vendor_slug">;
 
+let siteLogoCache: string | null | undefined;
+
+async function siteLogoDataUri(): Promise<string | null> {
+  if (siteLogoCache !== undefined) return siteLogoCache;
+  try {
+    const url = `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`;
+    let res: Response;
+    try {
+      const { env } = getCloudflareContext();
+      const assets = (env as unknown as { ASSETS?: { fetch: typeof fetch } }).ASSETS;
+      res = assets ? await assets.fetch(url) : await fetch(url);
+    } catch {
+      res = await fetch(url);
+    }
+    if (!res.ok) throw new Error(String(res.status));
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    siteLogoCache = `data:image/png;base64,${btoa(binary)}`;
+  } catch {
+    siteLogoCache = null;
+  }
+  return siteLogoCache;
+}
+
 /** Render a tier list's OG/share image and return the PNG bytes. */
 export async function renderListOgPng(slug: string): Promise<Uint8Array | null> {
   const list = await getTierListBySlug(slug);
@@ -189,11 +216,12 @@ export async function renderHomeOgPng(): Promise<Uint8Array> {
 
   const shown = TIERS.flatMap((t) => (placements.get(t) ?? []).slice(0, MAX_PER_ROW));
   const logoBySlug = new Map<string, string | null>();
-  await Promise.all(
-    [...new Set(shown.map((m) => m.vendor_slug))].map(async (vs) => {
+  const [siteLogo] = await Promise.all([
+    siteLogoDataUri(),
+    ...[...new Set(shown.map((m) => m.vendor_slug))].map(async (vs) => {
       logoBySlug.set(vs, await logoDataUri(vs));
-    })
-  );
+    }),
+  ]);
 
   const image = new ImageResponse(
     (
@@ -274,8 +302,10 @@ export async function renderHomeOgPng(): Promise<Uint8Array> {
           })}
         </div>
         <div style={{ display: "flex", alignItems: "center", height: 96, backgroundColor: "#2e2e2e", padding: "0 32px", gap: 16 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`} width={52} height={52} alt="" />
+          {siteLogo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={siteLogo} width={52} height={52} alt="" />
+          )}
           <div style={{ display: "flex", color: "#f2f2f2", fontSize: 38, fontWeight: 700 }}>
             llmtierlist.com
           </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/data";
 import { signOut } from "@/lib/actions";
 import UserMenu from "@/components/UserMenu";
+import TrackVisit from "@/components/TrackVisit";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -73,6 +74,7 @@ export default async function RootLayout({
             </div>
           </nav>
         </header>
+        <TrackVisit />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
         <footer className="border-t border-edge py-6 text-center text-xs text-muted">
           llmtierlist.com — crowdsourced LLM rankings. Not affiliated with any AI lab.

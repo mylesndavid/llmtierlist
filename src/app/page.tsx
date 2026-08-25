@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentUser, getBaseModelsWithStats, getUserVotes } from "@/lib/data";
+import { getCurrentUser, getBaseModelsWithStats, getSiteStats, getUserVotes } from "@/lib/data";
 import { communityScore } from "@/lib/tiers";
 import VoteButtons from "@/components/VoteButtons";
 import StarRating from "@/components/StarRating";
@@ -12,11 +12,12 @@ export default async function Home({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ error }, models, userVotes, user] = await Promise.all([
+  const [{ error }, models, userVotes, user, stats] = await Promise.all([
     searchParams,
     getBaseModelsWithStats(),
     getUserVotes(),
     getCurrentUser(),
+    getSiteStats(),
   ]);
 
   const ranked = [...models].sort(
@@ -69,6 +70,14 @@ export default async function Home({
             Community tiers
           </Link>
         </div>
+        <p className="mt-6 text-sm text-muted">
+          <span className="font-semibold text-foreground">{stats.list_count}</span>{" "}
+          tier {stats.list_count === 1 ? "list" : "lists"} ·{" "}
+          <span className="font-semibold text-foreground">{stats.vote_count}</span>{" "}
+          {stats.vote_count === 1 ? "vote" : "votes"} cast ·{" "}
+          <span className="font-semibold text-foreground">{stats.visitor_count}</span>{" "}
+          {stats.visitor_count === 1 ? "visitor" : "visitors"}
+        </p>
       </section>
 
       <section>

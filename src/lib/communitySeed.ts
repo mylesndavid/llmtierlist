@@ -20,34 +20,28 @@ export const COMMUNITY_SEED: ReadonlyArray<{ id: string; tier: Tier }> = [
   { id: "anthropic/claude-opus-5", tier: "S" },
   { id: "openai/gpt-5.6-sol", tier: "S" },
   // A — excellent, a notch behind
-  { id: "google/gemini-3.1-pro-preview", tier: "A" },
   { id: "moonshotai/kimi-k3", tier: "A" },
   { id: "deepseek/deepseek-v4-pro", tier: "A" },
-  { id: "x-ai/grok-4.6", tier: "A" },
+  { id: "deepseek/deepseek-v4-flash", tier: "A" },
+  { id: "google/gemini-3.1-pro-preview", tier: "A" },
   { id: "anthropic/claude-sonnet-5", tier: "A" },
   { id: "openai/gpt-5.6-terra", tier: "A" },
+  { id: "x-ai/grok-4.6", tier: "A" },
   // B — strong, specific reasons to pick
-  { id: "meta/muse-spark-1.2", tier: "B" },
-  { id: "deepseek/deepseek-v4-flash", tier: "B" },
   { id: "z-ai/glm-5.3", tier: "B" },
   { id: "openai/gpt-5.6-luna", tier: "B" },
-  { id: "google/gemini-3.7-flash", tier: "B" },
   { id: "anthropic/claude-opus-4.8", tier: "B" },
   { id: "openai/gpt-5.5", tier: "B" },
   { id: "minimax/minimax-m3", tier: "B" },
-  // C — capable, mostly value plays or a generation behind
+  // C — has fans, but the takes are mixed
+  { id: "meta/muse-spark-1.2", tier: "C" },
   { id: "qwen/qwen3.8-max", tier: "C" },
-  { id: "qwen/qwen3.8-27b", tier: "C" },
   { id: "moonshotai/kimi-k2.6", tier: "C" },
-  { id: "anthropic/claude-haiku-4.5", tier: "C" },
-  { id: "mistralai/mistral-medium-3-5", tier: "C" },
-  { id: "google/gemma-4-31b-it", tier: "C" },
-  { id: "openai/gpt-oss-120b", tier: "C" },
-  // D — superseded or struggling for a niche
+  // D — superseded
   { id: "x-ai/grok-4.5", tier: "D" },
   { id: "meta-llama/llama-4-maverick", tier: "D" },
-  { id: "cohere/command-a", tier: "D" },
-  { id: "amazon/nova-premier-v1", tier: "D" },
+  // F — the community's verdict on budget Gemini
+  { id: "google/gemini-3.7-flash", tier: "F" },
 ];
 
 /**

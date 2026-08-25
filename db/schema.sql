@@ -122,3 +122,18 @@ create table if not exists og_cache (
   png text not null,                -- base64 of the pre-rendered OG image
   updated_at text not null default (datetime('now'))
 );
+
+create table if not exists og_home_cache (
+  id integer primary key check (id = 1), -- single row: the site-wide OG image
+  png text not null,
+  updated_at text not null default (datetime('now'))
+);
+
+-- First-party analytics: one row per (day, visitor). Visitor is a daily
+-- sha-256 of ip+user-agent (Plausible-style) — no cookies, not reversible.
+create table if not exists visits (
+  day text not null,
+  visitor text not null,
+  views integer not null default 1,
+  primary key (day, visitor)
+);

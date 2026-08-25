@@ -261,6 +261,22 @@ export async function getReviewsByUser(userId: string, limit = 10): Promise<User
   );
 }
 
+export interface SiteStats {
+  list_count: number;
+  vote_count: number;
+  visitor_count: number;
+}
+
+export async function getSiteStats(): Promise<SiteStats> {
+  const rows = await d1Query<SiteStats>(
+    `select
+       (select count(*) from tier_lists where is_public = 1) as list_count,
+       (select count(*) from votes) + (select count(*) from list_votes) as vote_count,
+       (select count(*) from visits) as visitor_count`
+  );
+  return rows[0] ?? { list_count: 0, vote_count: 0, visitor_count: 0 };
+}
+
 /** Full own-user row for the settings/welcome forms. */
 export async function getOwnProfile() {
   const user = await getSessionUser();
