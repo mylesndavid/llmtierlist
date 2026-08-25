@@ -23,7 +23,7 @@ export default function TierBoard({
         return (
           <div key={tier.key} className="flex min-h-16 border-b border-black/60 last:border-b-0 sm:min-h-20">
             <div
-              className="flex w-14 shrink-0 items-center justify-center break-words p-1 text-center text-base font-bold leading-tight text-black sm:w-24 sm:p-2 sm:text-lg"
+              className="flex w-10 shrink-0 items-center justify-center break-words p-1 text-center text-sm font-bold leading-tight text-black sm:w-24 sm:p-2 sm:text-lg"
               style={{ backgroundColor: tier.color }}
             >
               {tier.label}
@@ -34,11 +34,11 @@ export default function TierBoard({
               ) : (
                 models.map((m) =>
                   linkModels ? (
-                    <Link key={m.id} href={`/models/${m.slug}`} className="w-32 hover:brightness-125 sm:w-36">
+                    <Link key={m.id} href={`/models/${m.slug}`} className="w-1/3 hover:brightness-125 sm:w-36">
                       <ModelChip model={m} />
                     </Link>
                   ) : (
-                    <div key={m.id} className="w-32 sm:w-36">
+                    <div key={m.id} className="w-1/3 sm:w-36">
                       <ModelChip model={m} />
                     </div>
                   )

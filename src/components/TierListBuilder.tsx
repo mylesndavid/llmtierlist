@@ -443,7 +443,7 @@ export default function TierListBuilder({
             <div key={tier.key} className="border-b border-black/60 last:border-b-0">
               <div className="flex min-h-16 sm:min-h-20">
                 <div
-                  className="group/label relative flex w-14 shrink-0 items-center justify-center break-words p-1 text-center font-bold leading-tight text-black sm:w-24 sm:p-2"
+                  className="group/label relative flex w-10 shrink-0 items-center justify-center break-words p-1 text-center font-bold leading-tight text-black sm:w-24 sm:p-2"
                   style={{
                     backgroundColor: tier.color,
                     fontSize: tier.label.length > 4 ? 13 : 18,
@@ -467,7 +467,7 @@ export default function TierListBuilder({
                         model={modelById.get(id)!}
                         onRemove={() => moveToPool(id)}
                         removeLabel="Remove from tier"
-                        width="w-32 sm:w-36"
+                        width="w-1/3 sm:w-36"
                       />
                     ))}
                     <button
@@ -777,7 +777,7 @@ export default function TierListBuilder({
           <SortableContext items={visiblePool} strategy={rectSortingStrategy}>
             <DroppableZone
               id="pool"
-              className="grid max-h-[420px] min-h-16 grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] content-start overflow-y-auto sm:min-h-20 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]"
+              className="grid max-h-[420px] min-h-16 grid-cols-3 content-start overflow-y-auto sm:min-h-20 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]"
             >
               {visiblePool.length === 0 ? (
                 <span className="col-span-full self-center px-3 py-6 text-sm text-muted">
