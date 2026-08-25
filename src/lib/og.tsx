@@ -172,6 +172,124 @@ export async function renderListOgPng(slug: string): Promise<Uint8Array | null> 
   return new Uint8Array(await image.arrayBuffer());
 }
 
+/** The site-wide OG image: the community tier board with brand footer. */
+export async function renderHomeOgPng(): Promise<Uint8Array> {
+  const { getBaseModelsWithStats } = await import("./data");
+  const { COMMUNITY_SEED, seededTier } = await import("./communitySeed");
+  const { communityScore } = await import("./tiers");
+  const { TIERS, DEFAULT_TIERS } = await import("./types");
+
+  const models = await getBaseModelsWithStats();
+  const modelById = new Map(models.map((m) => [m.id, m]));
+  const placements = new Map<string, OgModel[]>(TIERS.map((t) => [t, []]));
+  for (const seed of COMMUNITY_SEED) {
+    const m = modelById.get(seed.id);
+    if (m) placements.get(seededTier(seed.tier, communityScore(m)))?.push(m);
+  }
+
+  const shown = TIERS.flatMap((t) => (placements.get(t) ?? []).slice(0, MAX_PER_ROW));
+  const logoBySlug = new Map<string, string | null>();
+  await Promise.all(
+    [...new Set(shown.map((m) => m.vendor_slug))].map(async (vs) => {
+      logoBySlug.set(vs, await logoDataUri(vs));
+    })
+  );
+
+  const image = new ImageResponse(
+    (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: "#121212",
+          fontFamily: "sans-serif",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+          {DEFAULT_TIERS.map((tier) => {
+            const rowModels = placements.get(tier.key) ?? [];
+            const rowShown = rowModels.slice(0, MAX_PER_ROW);
+            const overflow = rowModels.length - rowShown.length;
+            return (
+              <div key={tier.key} style={{ display: "flex", flexGrow: 1, borderBottom: "2px solid #000" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 84,
+                    backgroundColor: tier.color,
+                    color: "#000",
+                    fontSize: 36,
+                    fontWeight: 700,
+                  }}
+                >
+                  {tier.label}
+                </div>
+                <div style={{ display: "flex", alignItems: "stretch", flexGrow: 1, backgroundColor: "#1a1a1a" }}>
+                  {rowShown.map((m) => {
+                    const logo = logoBySlug.get(m.vendor_slug);
+                    return (
+                      <div
+                        key={m.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          width: 172,
+                          backgroundColor: "#242424",
+                          borderRight: "2px solid #121212",
+                          color: "#f2f2f2",
+                          fontSize: 14.5,
+                          fontWeight: 600,
+                          padding: "0 10px",
+                          gap: 8,
+                          overflow: "hidden",
+                        }}
+                      >
+                        {logo && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={logo} width={27} height={27} alt="" />
+                        )}
+                        <div style={{ display: "flex", overflow: "hidden" }}>
+                          {m.name.length > 26 ? `${m.name.slice(0, 25)}…` : m.name}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {overflow > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", color: "#9a9a9a", fontSize: 18, fontWeight: 600, paddingLeft: 10 }}>
+                      +{overflow}
+                    </div>
+                  )}
+                  {rowModels.length === 0 && (
+                    <div style={{ display: "flex", alignItems: "center", color: "#5a5a5a", fontSize: 17, paddingLeft: 14 }}>
+                      you decide
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", height: 96, backgroundColor: "#2e2e2e", padding: "0 32px", gap: 16 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`} width={52} height={52} alt="" />
+          <div style={{ display: "flex", color: "#f2f2f2", fontSize: 38, fontWeight: 700 }}>
+            llmtierlist.com
+          </div>
+          <div style={{ display: "flex", marginLeft: "auto", color: "#9a9a9a", fontSize: 22 }}>
+            what people actually think of every model
+          </div>
+        </div>
+      </div>
+    ),
+    SIZE
+  );
+  return new Uint8Array(await image.arrayBuffer());
+}
+
 function toBase64(bytes: Uint8Array): string {
   let binary = "";
   const CHUNK = 0x8000;

@@ -9,11 +9,26 @@ import "./globals.css";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
+const SITE_DESCRIPTION =
+  "Crowdsourced LLM rankings — see what people actually think of every model, vote, review, and build your own tier lists.";
+const SITE_OG_IMAGE = { url: "/og.png", width: 1200, height: 630, alt: "The community LLM tier list" };
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: { default: "LLM Tier List", template: "%s · LLM Tier List" },
-  description:
-    "Crowdsourced LLM rankings — vote, review, and build your own AI model tier lists.",
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: "LLM Tier List",
+    description: SITE_DESCRIPTION,
+    siteName: "LLM Tier List",
+    images: [SITE_OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LLM Tier List",
+    description: SITE_DESCRIPTION,
+    images: [SITE_OG_IMAGE],
+  },
 };
 
 export default async function RootLayout({
