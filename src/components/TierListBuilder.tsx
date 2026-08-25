@@ -467,7 +467,7 @@ export default function TierListBuilder({
                         model={modelById.get(id)!}
                         onRemove={() => moveToPool(id)}
                         removeLabel="Remove from tier"
-                        width="w-1/3 sm:w-36"
+                        width="w-1/4 sm:w-36"
                       />
                     ))}
                     <button
@@ -777,7 +777,7 @@ export default function TierListBuilder({
           <SortableContext items={visiblePool} strategy={rectSortingStrategy}>
             <DroppableZone
               id="pool"
-              className="grid max-h-[420px] min-h-16 grid-cols-3 content-start overflow-y-auto sm:min-h-20 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]"
+              className="grid max-h-[420px] min-h-16 grid-cols-4 content-start overflow-y-auto sm:min-h-20 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]"
             >
               {visiblePool.length === 0 ? (
                 <span className="col-span-full self-center px-3 py-6 text-sm text-muted">

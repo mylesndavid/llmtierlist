@@ -34,11 +34,11 @@ export default function TierBoard({
               ) : (
                 models.map((m) =>
                   linkModels ? (
-                    <Link key={m.id} href={`/models/${m.slug}`} className="w-1/3 hover:brightness-125 sm:w-36">
+                    <Link key={m.id} href={`/models/${m.slug}`} className="w-1/4 hover:brightness-125 sm:w-36">
                       <ModelChip model={m} />
                     </Link>
                   ) : (
-                    <div key={m.id} className="w-1/3 sm:w-36">
+                    <div key={m.id} className="w-1/4 sm:w-36">
                       <ModelChip model={m} />
                     </div>
                   )
