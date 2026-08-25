@@ -24,7 +24,6 @@ export const COMMUNITY_SEED: ReadonlyArray<{ id: string; tier: Tier }> = [
   { id: "deepseek/deepseek-v4-pro", tier: "A" },
   { id: "deepseek/deepseek-v4-flash", tier: "A" },
   { id: "google/gemini-3.1-pro-preview", tier: "A" },
-  { id: "anthropic/claude-sonnet-5", tier: "A" },
   { id: "openai/gpt-5.6-terra", tier: "A" },
   { id: "x-ai/grok-4.6", tier: "A" },
   // B — strong, specific reasons to pick
@@ -37,9 +36,9 @@ export const COMMUNITY_SEED: ReadonlyArray<{ id: string; tier: Tier }> = [
   { id: "meta/muse-spark-1.2", tier: "C" },
   { id: "qwen/qwen3.8-max", tier: "C" },
   { id: "moonshotai/kimi-k2.6", tier: "C" },
-  // D — superseded
+  // D — superseded or the community's punching bag
   { id: "x-ai/grok-4.5", tier: "D" },
-  { id: "meta-llama/llama-4-maverick", tier: "D" },
+  { id: "anthropic/claude-sonnet-5", tier: "D" },
   // F — the community's verdict on budget Gemini
   { id: "google/gemini-3.7-flash", tier: "F" },
 ];
