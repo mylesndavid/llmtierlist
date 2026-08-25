@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     }
     return NextResponse.redirect(`${origin}${next}`);
   } catch (err) {
-    console.error("Auth callback failed:", err);
-    return NextResponse.redirect(`${origin}/?error=auth`);
+    console.error("Auth callback failed:", err instanceof Error ? err.stack : String(err));
+    return NextResponse.redirect(`${origin}/?error=signin`);
   }
 }

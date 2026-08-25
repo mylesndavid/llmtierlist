@@ -119,17 +119,7 @@ export default function ProfileForm({
         />
       </label>
 
-      <label className="block space-y-1">
-        <span className="text-sm text-muted">Bio</span>
-        <textarea
-          name="bio"
-          defaultValue={initialBio}
-          rows={2}
-          maxLength={280}
-          placeholder="Optional — a line about you and your takes"
-          className="w-full rounded-sm border border-edge bg-surface px-3 py-2 outline-none placeholder:text-muted focus:border-muted"
-        />
-      </label>
+      <input type="hidden" name="bio" value={initialBio} />
 
       {error && <p className="text-sm text-rose-400">{error}</p>}
 

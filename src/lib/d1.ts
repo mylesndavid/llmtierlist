@@ -24,21 +24,24 @@ interface D1Binding {
  */
 export async function d1Query<T = Record<string, unknown>>(
   sql: string,
-  params: Param[] = []
+  rawParams: Param[] = []
 ): Promise<T[]> {
+  // D1's native binding throws on `undefined` params; normalize to null.
+  const params = rawParams.map((p) => (p === undefined ? null : p));
+  let db: D1Binding | undefined;
   try {
     const { env } = getCloudflareContext();
-    const db = (env as unknown as { DB?: D1Binding }).DB;
-    if (db) {
-      const { results } = await db.prepare(sql).bind(...params).all<T>();
-      return results;
-    }
+    db = (env as unknown as { DB?: D1Binding }).DB;
   } catch {
     // Not running on Workers — use the REST API below.
   }
+  if (db) {
+    const { results } = await db.prepare(sql).bind(...params).all<T>();
+    return results;
+  }
   const account = process.env.CLOUDFLARE_ACCOUNT_ID!;
-  const db = process.env.CLOUDFLARE_D1_DATABASE_ID!;
-  const res = await fetch(`${API}/accounts/${account}/d1/database/${db}/query`, {
+  const dbId = process.env.CLOUDFLARE_D1_DATABASE_ID!;
+  const res = await fetch(`${API}/accounts/${account}/d1/database/${dbId}/query`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN!}`,

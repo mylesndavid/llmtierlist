@@ -33,7 +33,7 @@ export default function ReviewForm({ modelId, modelSlug, signedIn, existing }: P
         onClick={() => setOpen(true)}
         className="rounded-sm border border-edge bg-surface px-4 py-2 text-sm font-medium hover:bg-surface-2"
       >
-        {existing ? "Edit your review" : "✍️ Write a review"}
+        {existing ? "Edit your review" : "Write a review"}
       </button>
     );
   }

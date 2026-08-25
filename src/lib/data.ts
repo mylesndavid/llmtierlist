@@ -47,9 +47,20 @@ const MODEL_SELECT = `
          s.placement_count, s.avg_tier_value
   from models m left join model_stats s on s.model_id = m.id`;
 
+// Per-isolate cache for the hot catalog query (417 rows + stats aggregation).
+// Busted by write actions in the same isolate; other isolates age out in 30s.
+let modelsCache: { data: ModelWithStats[]; ts: number } | null = null;
+
+export function bustModelsCache() {
+  modelsCache = null;
+}
+
 export async function getModelsWithStats(): Promise<ModelWithStats[]> {
+  if (modelsCache && Date.now() - modelsCache.ts < 30_000) return modelsCache.data;
   const rows = await d1Query<ModelRow>(`${MODEL_SELECT} order by m.name`);
-  return rows.map(withStats);
+  const data = rows.map(withStats);
+  modelsCache = { data, ts: Date.now() };
+  return data;
 }
 
 export async function getModelBySlug(slug: string): Promise<ModelWithStats | null> {

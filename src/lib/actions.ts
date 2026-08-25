@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { customAlphabet } from "nanoid";
 import { d1Query } from "./d1";
+import { bustModelsCache } from "./data";
 import { createSession, destroySession, getSessionUser } from "./auth";
 import { TIERS, type Tier } from "./types";
 
@@ -75,7 +76,8 @@ export async function updateProfile(formData: FormData) {
   });
 
   revalidatePath("/", "layout");
-  redirect(next && next.startsWith("/") ? next : `/u/${username}`);
+  // Land on the new profile unless onboarding was interrupted mid-task.
+  redirect(next && next !== "/" && next.startsWith("/") ? next : `/u/${username}`);
 }
 
 // ============ votes ============
@@ -94,6 +96,7 @@ export async function castVote(modelId: string, value: 1 | -1 | 0) {
       [user.id, modelId, value]
     );
   }
+  bustModelsCache();
   revalidatePath("/", "layout");
   return { ok: true };
 }
@@ -120,6 +123,7 @@ export async function upsertReview(formData: FormData) {
        updated_at = datetime('now')`,
     [rowId(), user.id, modelId, rating, title, body]
   );
+  bustModelsCache();
   revalidatePath(`/models/${modelSlug}`);
   return { ok: true };
 }
@@ -195,6 +199,7 @@ export async function saveTierList(payload: TierListPayload) {
     );
   }
 
+  bustModelsCache();
   revalidatePath("/tiers");
   revalidatePath("/tierlists");
   revalidatePath(`/t/${slug}`);

@@ -3,13 +3,14 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/data";
 import { signOut } from "@/lib/actions";
-import Avatar from "@/components/Avatar";
+import UserMenu from "@/components/UserMenu";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: { default: "LLM Tier List", template: "%s · LLM Tier List" },
   description:
     "Crowdsourced LLM rankings — vote, review, and build your own AI model tier lists.",
@@ -40,26 +41,15 @@ export default async function RootLayout({
                 href="/tierlists/new"
                 className="rounded-sm bg-foreground px-3 py-1.5 font-semibold text-black hover:bg-white"
               >
-                Create a Tier List
+                Create
               </Link>
               {user ? (
-                <div className="flex items-center gap-3">
-                  <Link href="/me/tierlists" className="text-muted hover:text-foreground">
-                    My Lists
-                  </Link>
-                  <Link
-                    href={user.onboarded ? `/u/${user.username}` : "/welcome"}
-                    title={`@${user.username}`}
-                    className="rounded-full ring-1 ring-edge transition hover:ring-muted"
-                  >
-                    <Avatar src={user.avatar_url} name={user.username} size={28} />
-                  </Link>
-                  <form action={signOut}>
-                    <button className="text-muted hover:text-foreground" type="submit">
-                      Sign out
-                    </button>
-                  </form>
-                </div>
+                <UserMenu
+                  username={user.username}
+                  avatarUrl={user.avatar_url}
+                  onboarded={user.onboarded}
+                  signOutAction={signOut}
+                />
               ) : (
                 <Link href="/login" className="text-muted hover:text-foreground">
                   Sign in

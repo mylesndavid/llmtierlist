@@ -40,6 +40,7 @@ export async function handleCallback(code: string): Promise<SessionUser> {
     },
     body: JSON.stringify({
       client_id: process.env.WORKOS_CLIENT_ID!,
+      client_secret: process.env.WORKOS_API_KEY!,
       grant_type: "authorization_code",
       code,
     }),

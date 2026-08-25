@@ -12,7 +12,7 @@ interface Props {
 /** Read-only tier board used on the community page and shared tier lists. */
 export default function TierBoard({ placements, linkModels = true, emptyHint }: Props) {
   return (
-    <div className="border border-black/60 bg-black/60">
+    <div data-export-board className="border border-black/60 bg-black/60">
       {TIERS.map((tier) => {
         const models = placements.get(tier) ?? [];
         return (

@@ -7,8 +7,13 @@ import VendorLogo from "@/components/VendorLogo";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
-  const [models, userVotes, user] = await Promise.all([
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const [{ error }, models, userVotes, user] = await Promise.all([
+    searchParams,
     getModelsWithStats(),
     getUserVotes(),
     getCurrentUser(),
@@ -24,6 +29,24 @@ export default async function Home() {
 
   return (
     <div className="space-y-10">
+      {error === "signin" && (
+        <div className="border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+          Sign-in didn&apos;t complete — please{" "}
+          <Link href="/login" className="underline">try again</Link>. If it keeps
+          failing, the sign-in codes expire quickly, so go through in one sitting.
+        </div>
+      )}
+      {user && !user.onboarded && (
+        <div className="flex items-center justify-between gap-3 border border-edge bg-surface px-4 py-3 text-sm">
+          <span>You&apos;re signed in — finish setting up your profile to vote and publish tier lists.</span>
+          <Link
+            href="/welcome"
+            className="shrink-0 rounded-sm bg-foreground px-3 py-1.5 font-semibold text-black hover:bg-white"
+          >
+            Create profile
+          </Link>
+        </div>
+      )}
       <section className="pt-6 text-center">
         <h1 className="mx-auto max-w-3xl text-4xl font-extrabold tracking-tight sm:text-5xl">
           The internet&apos;s LLM tier list

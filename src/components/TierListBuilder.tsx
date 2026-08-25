@@ -32,6 +32,7 @@ import { TIER_COLORS } from "@/lib/tiers";
 import { TIERS, type Model, type Tier, type TierListItem } from "@/lib/types";
 import ModelChip from "./ModelChip";
 import VendorLogo from "./VendorLogo";
+import FullscreenBoard from "./FullscreenBoard";
 
 type ContainerId = Tier | "pool";
 type Containers = Record<ContainerId, string[]>;
@@ -342,6 +343,7 @@ export default function TierListBuilder({
       />
       {error && <p className="text-sm text-rose-400">{error}</p>}
 
+      <FullscreenBoard title={title || "New tier list"}>
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}
@@ -351,7 +353,7 @@ export default function TierListBuilder({
         onDragEnd={handleDragEnd}
       >
         {/* tier board */}
-        <div className="border border-black/60 bg-black/60">
+        <div data-export-board className="border border-black/60 bg-black/60">
           {TIERS.map((tier) => (
             <div key={tier} className="flex min-h-20 border-b border-black/60 last:border-b-0">
               <div
@@ -573,6 +575,7 @@ export default function TierListBuilder({
           ) : null}
         </DragOverlay>
       </DndContext>
+      </FullscreenBoard>
     </div>
   );
 }
