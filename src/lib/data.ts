@@ -1,13 +1,15 @@
 import { d1Query } from "./d1";
 import { getSessionUser } from "./auth";
-import type {
-  Model,
-  ModelStats,
-  ModelWithStats,
-  PublicProfile,
-  Review,
-  TierList,
-  TierListItem,
+import {
+  DEFAULT_TIERS,
+  type Model,
+  type ModelStats,
+  type ModelWithStats,
+  type PublicProfile,
+  type Review,
+  type TierDef,
+  type TierList,
+  type TierListItem,
 } from "./types";
 
 const EMPTY_STATS = (id: string): ModelStats => ({
@@ -96,18 +98,29 @@ export async function getCurrentUser() {
   return getSessionUser();
 }
 
-type TierListRow = Omit<TierList, "is_public" | "profiles"> & {
+type TierListRow = Omit<TierList, "is_public" | "profiles" | "tiers"> & {
   is_public: number;
+  tiers: string | null;
   username?: string;
   display_name?: string | null;
   avatar_url?: string | null;
 };
+
+function parseTiers(json: string | null): TierDef[] {
+  if (!json) return DEFAULT_TIERS;
+  try {
+    const parsed = JSON.parse(json);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  } catch {}
+  return DEFAULT_TIERS;
+}
 
 function toTierList(row: TierListRow): TierList {
   const { username, display_name, avatar_url, ...rest } = row;
   return {
     ...rest,
     is_public: !!row.is_public,
+    tiers: parseTiers(row.tiers),
     profiles: username
       ? { username, display_name: display_name ?? null, avatar_url: avatar_url ?? null }
       : undefined,
@@ -116,7 +129,10 @@ function toTierList(row: TierListRow): TierList {
 
 export async function getTierListBySlug(
   slug: string
-): Promise<(TierList & { items: TierListItem[] }) | null> {
+): Promise<
+  | (TierList & { items: TierListItem[]; score: number; myVote: number })
+  | null
+> {
   const user = await getSessionUser();
   const rows = await d1Query<TierListRow>(
     `select tl.*, u.username, u.display_name, u.avatar_url
@@ -127,21 +143,61 @@ export async function getTierListBySlug(
   if (!rows.length) return null;
   const list = toTierList(rows[0]);
   if (!list.is_public && list.user_id !== user?.id) return null;
-  const items = await d1Query<TierListItem>(
-    "select * from tier_list_items where tier_list_id = ? order by position",
-    [list.id]
-  );
-  return { ...list, items };
+  const [items, scoreRows, voteRows] = await Promise.all([
+    d1Query<TierListItem>(
+      "select * from tier_list_items where tier_list_id = ? order by position",
+      [list.id]
+    ),
+    d1Query<{ score: number | null }>(
+      "select sum(value) as score from list_votes where tier_list_id = ?",
+      [list.id]
+    ),
+    user
+      ? d1Query<{ value: number }>(
+          "select value from list_votes where tier_list_id = ? and user_id = ?",
+          [list.id, user.id]
+        )
+      : Promise.resolve([]),
+  ]);
+  return {
+    ...list,
+    items,
+    score: scoreRows[0]?.score ?? 0,
+    myVote: voteRows[0]?.value ?? 0,
+  };
 }
 
-export async function getPublicTierLists(limit = 30): Promise<TierList[]> {
-  const rows = await d1Query<TierListRow>(
-    `select tl.*, u.username, u.display_name, u.avatar_url
+export type BrowseTierList = TierList & {
+  score: number;
+  /** item count per tier key, for the card mini-preview */
+  tier_counts: Record<string, number>;
+};
+
+export async function getPublicTierLists(limit = 30): Promise<BrowseTierList[]> {
+  const rows = await d1Query<TierListRow & { score: number | null }>(
+    `select tl.*, u.username, u.display_name, u.avatar_url,
+       (select sum(value) from list_votes lv where lv.tier_list_id = tl.id) as score
      from tier_lists tl join users u on u.id = tl.user_id
-     where tl.is_public = 1 order by tl.updated_at desc limit ?`,
+     where tl.is_public = 1
+     order by coalesce(score, 0) desc, tl.updated_at desc limit ?`,
     [limit]
   );
-  return rows.map(toTierList);
+  const lists = rows.map((r) => ({ ...toTierList(r), score: r.score ?? 0 }));
+  if (lists.length === 0) return [];
+
+  const counts = await d1Query<{ tier_list_id: string; tier: string; n: number }>(
+    `select tier_list_id, tier, count(*) as n from tier_list_items
+     where tier_list_id in (${lists.map(() => "?").join(",")})
+     group by tier_list_id, tier`,
+    lists.map((l) => l.id)
+  );
+  const byList = new Map<string, Record<string, number>>();
+  for (const c of counts) {
+    const rec = byList.get(c.tier_list_id) ?? {};
+    rec[c.tier] = c.n;
+    byList.set(c.tier_list_id, rec);
+  }
+  return lists.map((l) => ({ ...l, tier_counts: byList.get(l.id) ?? {} }));
 }
 
 export async function getProfileByUsername(username: string): Promise<PublicProfile | null> {

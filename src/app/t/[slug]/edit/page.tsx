@@ -29,6 +29,7 @@ export default async function EditTierListPage({
         initialTitle={list.title}
         initialDescription={list.description}
         initialIsPublic={list.is_public}
+        initialTiers={list.tiers}
         initialItems={list.items}
         signedIn
       />

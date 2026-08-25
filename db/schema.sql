@@ -57,6 +57,7 @@ create table if not exists tier_lists (
   title text not null check (length(title) between 1 and 120),
   description text not null default '',
   is_public integer not null default 1,
+  tiers text,                       -- JSON [{key,label,color}] row definitions; null = default S-F
   created_at text not null default (datetime('now')),
   updated_at text not null default (datetime('now'))
 );
@@ -65,7 +66,8 @@ create index if not exists tier_lists_user_id_idx on tier_lists (user_id);
 create table if not exists tier_list_items (
   tier_list_id text not null references tier_lists (id) on delete cascade,
   model_id text not null references models (id) on delete cascade,
-  tier text not null check (tier in ('S', 'A', 'B', 'C', 'D', 'F')),
+  tier text not null,               -- key into the list's tier definitions
+  tier_index integer not null default 0, -- row position at save time (0 = top)
   position integer not null default 0,
   primary key (tier_list_id, model_id)
 );
@@ -97,9 +99,17 @@ left join (
 left join (
   select i.model_id,
     count(*) as placement_count,
-    avg(case i.tier when 'S' then 5 when 'A' then 4 when 'B' then 3
-                    when 'C' then 2 when 'D' then 1 else 0 end) as avg_tier_value
+    avg(case when i.tier_index >= 5 then 0 else 5 - i.tier_index end) as avg_tier_value
   from tier_list_items i
   join tier_lists tl on tl.id = i.tier_list_id and tl.is_public = 1
   group by i.model_id
 ) t on t.model_id = m.id;
+
+create table if not exists list_votes (
+  user_id text not null references users (id) on delete cascade,
+  tier_list_id text not null references tier_lists (id) on delete cascade,
+  value integer not null check (value in (-1, 1)),
+  created_at text not null default (datetime('now')),
+  primary key (user_id, tier_list_id)
+);
+create index if not exists list_votes_list_idx on list_votes (tier_list_id);

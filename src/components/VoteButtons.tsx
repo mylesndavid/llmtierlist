@@ -2,7 +2,7 @@
 
 import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { castVote } from "@/lib/actions";
+import { castListVote, castVote } from "@/lib/actions";
 
 interface Props {
   modelId: string;
@@ -10,9 +10,10 @@ interface Props {
   userVote: number; // 1, -1, or 0
   signedIn: boolean;
   size?: "sm" | "lg";
+  kind?: "model" | "list";
 }
 
-export default function VoteButtons({ modelId, netScore, userVote, signedIn, size = "sm" }: Props) {
+export default function VoteButtons({ modelId, netScore, userVote, signedIn, size = "sm", kind = "model" }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic({ netScore, userVote });
@@ -28,7 +29,8 @@ export default function VoteButtons({ modelId, netScore, userVote, signedIn, siz
         netScore: optimistic.netScore - optimistic.userVote + next,
         userVote: next,
       });
-      await castVote(modelId, next as 1 | -1 | 0);
+      if (kind === "list") await castListVote(modelId, next as 1 | -1 | 0);
+      else await castVote(modelId, next as 1 | -1 | 0);
     });
   }
 

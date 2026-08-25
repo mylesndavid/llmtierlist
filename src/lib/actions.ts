@@ -6,7 +6,7 @@ import { customAlphabet } from "nanoid";
 import { d1Query } from "./d1";
 import { bustModelsCache } from "./data";
 import { createSession, destroySession, getSessionUser } from "./auth";
-import { TIERS, type Tier } from "./types";
+import { type Tier, type TierDef } from "./types";
 
 const slugId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 10);
 const rowId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 16);
@@ -144,17 +144,34 @@ export interface TierListPayload {
   title: string;
   description: string;
   isPublic: boolean;
+  tiers: TierDef[];
   placements: Array<{ modelId: string; tier: Tier; position: number }>;
 }
+
+const TIER_KEY_RE = /^[a-zA-Z0-9_-]{1,16}$/;
+const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
 export async function saveTierList(payload: TierListPayload) {
   const user = await requireUser();
 
   const title = payload.title.trim().slice(0, 120);
   if (!title) return { error: "Give your tier list a title." };
-  const placements = payload.placements.filter((p) =>
-    (TIERS as readonly string[]).includes(p.tier)
-  );
+
+  const tiers = (payload.tiers ?? []).slice(0, 10).map((t) => ({
+    key: String(t.key),
+    label: String(t.label ?? "").trim().slice(0, 24) || "?",
+    color: String(t.color),
+  }));
+  if (
+    tiers.length === 0 ||
+    tiers.some((t) => !TIER_KEY_RE.test(t.key) || !COLOR_RE.test(t.color)) ||
+    new Set(tiers.map((t) => t.key)).size !== tiers.length
+  ) {
+    return { error: "Invalid tier configuration." };
+  }
+  const tierIndexByKey = new Map(tiers.map((t, i) => [t.key, i]));
+
+  const placements = payload.placements.filter((p) => tierIndexByKey.has(p.tier));
   if (placements.length === 0) {
     return { error: "Place at least one model in a tier." };
   }
@@ -172,30 +189,30 @@ export async function saveTierList(payload: TierListPayload) {
     }
     slug = existing[0].slug;
     await d1Query(
-      `update tier_lists set title = ?, description = ?, is_public = ?,
+      `update tier_lists set title = ?, description = ?, is_public = ?, tiers = ?,
        updated_at = datetime('now') where id = ?`,
-      [title, payload.description.slice(0, 1000), payload.isPublic ? 1 : 0, listId]
+      [title, payload.description.slice(0, 1000), payload.isPublic ? 1 : 0, JSON.stringify(tiers), listId]
     );
     await d1Query("delete from tier_list_items where tier_list_id = ?", [listId]);
   } else {
     slug = slugId();
     listId = rowId();
     await d1Query(
-      `insert into tier_lists (id, user_id, slug, title, description, is_public)
-       values (?, ?, ?, ?, ?, ?)`,
-      [listId, user.id, slug, title, payload.description.slice(0, 1000), payload.isPublic ? 1 : 0]
+      `insert into tier_lists (id, user_id, slug, title, description, is_public, tiers)
+       values (?, ?, ?, ?, ?, ?, ?)`,
+      [listId, user.id, slug, title, payload.description.slice(0, 1000), payload.isPublic ? 1 : 0, JSON.stringify(tiers)]
     );
   }
 
-  // D1 params cap at 100 per query; 4 params per row -> 24 rows per batch
-  const BATCH = 24;
+  // D1 params cap at 100 per query; 5 params per row -> 20 rows per batch
+  const BATCH = 20;
   for (let i = 0; i < placements.length; i += BATCH) {
     const batch = placements.slice(i, i + BATCH);
     await d1Query(
-      `insert into tier_list_items (tier_list_id, model_id, tier, position) values ${batch
-        .map(() => "(?, ?, ?, ?)")
+      `insert into tier_list_items (tier_list_id, model_id, tier, tier_index, position) values ${batch
+        .map(() => "(?, ?, ?, ?, ?)")
         .join(", ")}`,
-      batch.flatMap((p) => [listId!, p.modelId, p.tier, p.position])
+      batch.flatMap((p) => [listId!, p.modelId, p.tier, tierIndexByKey.get(p.tier)!, p.position])
     );
   }
 
@@ -204,6 +221,24 @@ export async function saveTierList(payload: TierListPayload) {
   revalidatePath("/tierlists");
   revalidatePath(`/t/${slug}`);
   return { ok: true, slug };
+}
+
+export async function castListVote(tierListId: string, value: 1 | -1 | 0) {
+  const user = await requireUser();
+  if (value === 0) {
+    await d1Query("delete from list_votes where user_id = ? and tier_list_id = ?", [
+      user.id,
+      tierListId,
+    ]);
+  } else {
+    await d1Query(
+      `insert into list_votes (user_id, tier_list_id, value) values (?, ?, ?)
+       on conflict (user_id, tier_list_id) do update set value = excluded.value`,
+      [user.id, tierListId, value]
+    );
+  }
+  revalidatePath("/tierlists");
+  return { ok: true };
 }
 
 export async function deleteTierList(listId: string) {

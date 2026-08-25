@@ -1,27 +1,32 @@
-import { TIER_COLORS } from "@/lib/tiers";
-import { TIERS, type Model, type Tier } from "@/lib/types";
+import { DEFAULT_TIERS, type Model, type TierDef } from "@/lib/types";
 import ModelChip from "./ModelChip";
 import Link from "next/link";
 
 interface Props {
-  placements: Map<Tier, Model[]>;
+  placements: Map<string, Model[]>;
+  tiers?: TierDef[];
   linkModels?: boolean;
   emptyHint?: string;
 }
 
 /** Read-only tier board used on the community page and shared tier lists. */
-export default function TierBoard({ placements, linkModels = true, emptyHint }: Props) {
+export default function TierBoard({
+  placements,
+  tiers = DEFAULT_TIERS,
+  linkModels = true,
+  emptyHint,
+}: Props) {
   return (
     <div data-export-board className="border border-black/60 bg-black/60">
-      {TIERS.map((tier) => {
-        const models = placements.get(tier) ?? [];
+      {tiers.map((tier) => {
+        const models = placements.get(tier.key) ?? [];
         return (
-          <div key={tier} className="flex min-h-20 border-b border-black/60 last:border-b-0">
+          <div key={tier.key} className="flex min-h-20 border-b border-black/60 last:border-b-0">
             <div
-              className="flex w-20 shrink-0 items-center justify-center p-2 text-center text-lg font-bold text-black sm:w-24"
-              style={{ backgroundColor: TIER_COLORS[tier] }}
+              className="flex w-20 shrink-0 items-center justify-center break-words p-2 text-center text-lg font-bold leading-tight text-black sm:w-24"
+              style={{ backgroundColor: tier.color }}
             >
-              {tier}
+              {tier.label}
             </div>
             <div className="flex flex-1 flex-wrap content-start bg-surface">
               {models.length === 0 && emptyHint ? (

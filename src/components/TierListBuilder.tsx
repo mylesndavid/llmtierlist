@@ -28,14 +28,18 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { saveTierList } from "@/lib/actions";
-import { TIER_COLORS } from "@/lib/tiers";
-import { TIERS, type Model, type Tier, type TierListItem } from "@/lib/types";
+import {
+  DEFAULT_TIERS,
+  TIER_PALETTE,
+  type Model,
+  type TierDef,
+  type TierListItem,
+} from "@/lib/types";
 import ModelChip from "./ModelChip";
 import VendorLogo from "./VendorLogo";
 import FullscreenBoard from "./FullscreenBoard";
 
-type ContainerId = Tier | "pool";
-type Containers = Record<ContainerId, string[]>;
+type Containers = Record<string, string[]>;
 
 interface Props {
   models: Model[];
@@ -43,6 +47,7 @@ interface Props {
   initialTitle?: string;
   initialDescription?: string;
   initialIsPublic?: boolean;
+  initialTiers?: TierDef[];
   initialItems?: TierListItem[];
   signedIn: boolean;
 }
@@ -54,6 +59,10 @@ const dropAnimation: DropAnimation = {
     styles: { active: { opacity: "0.35" } },
   }),
 };
+
+function newTierKey() {
+  return `t${Math.random().toString(36).slice(2, 8)}`;
+}
 
 function SortableChip({
   model,
@@ -108,7 +117,7 @@ function DroppableZone({
   children,
   className,
 }: {
-  id: ContainerId;
+  id: string;
   children: React.ReactNode;
   className: string;
 }) {
@@ -131,17 +140,20 @@ export default function TierListBuilder({
   initialTitle = "",
   initialDescription = "",
   initialIsPublic = true,
+  initialTiers,
   initialItems = [],
   signedIn,
 }: Props) {
   const router = useRouter();
   const modelById = useMemo(() => new Map(models.map((m) => [m.id, m])), [models]);
 
+  const [tiers, setTiers] = useState<TierDef[]>(initialTiers ?? DEFAULT_TIERS);
   const [containers, setContainers] = useState<Containers>(() => {
+    const tierDefs = initialTiers ?? DEFAULT_TIERS;
     const placed = new Set(initialItems.map((i) => i.model_id));
-    const byTier = Object.fromEntries(TIERS.map((t) => [t, [] as string[]])) as Record<Tier, string[]>;
+    const byTier = Object.fromEntries(tierDefs.map((t) => [t.key, [] as string[]]));
     for (const item of [...initialItems].sort((a, b) => a.position - b.position)) {
-      if (modelById.has(item.model_id)) byTier[item.tier].push(item.model_id);
+      if (modelById.has(item.model_id) && byTier[item.tier]) byTier[item.tier].push(item.model_id);
     }
     return {
       ...byTier,
@@ -152,12 +164,15 @@ export default function TierListBuilder({
     };
   });
 
+  const tierKeys = useMemo(() => new Set(tiers.map((t) => t.key)), [tiers]);
+
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [isPublic, setIsPublic] = useState(initialIsPublic);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingTier, setEditingTier] = useState<string | null>(null);
 
   // -- pool filters
   const [poolFilter, setPoolFilter] = useState("");
@@ -178,15 +193,18 @@ export default function TierListBuilder({
 
   // Prefer tile-level collisions so rows part to show exactly where a drop
   // will land; fall back to the row itself when hovering empty space.
-  const collisionDetection: CollisionDetection = useCallback((args) => {
-    const pointer = pointerWithin(args);
-    const collisions = pointer.length > 0 ? pointer : rectIntersection(args);
-    const chip = collisions.find((c) => {
-      const id = String(c.id);
-      return id !== "pool" && !(TIERS as readonly string[]).includes(id);
-    });
-    return chip ? [chip] : collisions;
-  }, []);
+  const collisionDetection: CollisionDetection = useCallback(
+    (args) => {
+      const pointer = pointerWithin(args);
+      const collisions = pointer.length > 0 ? pointer : rectIntersection(args);
+      const chip = collisions.find((c) => {
+        const id = String(c.id);
+        return id !== "pool" && !tierKeys.has(id);
+      });
+      return chip ? [chip] : collisions;
+    },
+    [tierKeys]
+  );
 
   const vendors = useMemo(() => {
     const counts = new Map<string, { slug: string; name: string; count: number }>();
@@ -204,7 +222,7 @@ export default function TierListBuilder({
     return filterMode === "include" ? selected : !selected;
   }
 
-  const visiblePool = containers.pool.filter((id) => {
+  const visiblePool = (containers.pool ?? []).filter((id) => {
     const m = modelById.get(id)!;
     if (hidden.has(id)) return false;
     if (!passesVendorFilter(m)) return false;
@@ -224,9 +242,9 @@ export default function TierListBuilder({
     useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } })
   );
 
-  function findContainer(id: string): ContainerId | null {
-    if (id === "pool" || (TIERS as readonly string[]).includes(id)) return id as ContainerId;
-    for (const key of Object.keys(containers) as ContainerId[]) {
+  function findContainer(id: string): string | null {
+    if (id === "pool" || tierKeys.has(id)) return id;
+    for (const key of Object.keys(containers)) {
       if (containers[key].includes(id)) return key;
     }
     return null;
@@ -234,7 +252,7 @@ export default function TierListBuilder({
 
   function moveToPool(modelId: string) {
     setContainers((prev) => {
-      const from = (Object.keys(prev) as ContainerId[]).find((k) => k !== "pool" && prev[k].includes(modelId));
+      const from = Object.keys(prev).find((k) => k !== "pool" && prev[k].includes(modelId));
       if (!from) return prev;
       return {
         ...prev,
@@ -242,6 +260,40 @@ export default function TierListBuilder({
         pool: [modelId, ...prev.pool],
       };
     });
+  }
+
+  // -- tier row management
+
+  function addTier() {
+    if (tiers.length >= 10) return;
+    const key = newTierKey();
+    const color = TIER_PALETTE[tiers.length % TIER_PALETTE.length];
+    setTiers((prev) => [...prev, { key, label: "NEW", color }]);
+    setContainers((prev) => ({ ...prev, [key]: [] }));
+    setEditingTier(key);
+  }
+
+  function removeTier(key: string) {
+    if (tiers.length <= 1) return;
+    setTiers((prev) => prev.filter((t) => t.key !== key));
+    setContainers((prev) => {
+      const { [key]: orphans = [], ...rest } = prev;
+      return { ...rest, pool: [...orphans, ...prev.pool] };
+    });
+    setEditingTier(null);
+  }
+
+  function moveTier(key: string, dir: -1 | 1) {
+    setTiers((prev) => {
+      const i = prev.findIndex((t) => t.key === key);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      return arrayMove(prev, i, j);
+    });
+  }
+
+  function updateTier(key: string, patch: Partial<TierDef>) {
+    setTiers((prev) => prev.map((t) => (t.key === key ? { ...t, ...patch } : t)));
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -291,16 +343,20 @@ export default function TierListBuilder({
     }
     setSaving(true);
     setError(null);
-    const placements = TIERS.flatMap((tier) =>
-      containers[tier].map((modelId, position) => ({ modelId, tier, position }))
+    const placements = tiers.flatMap((tier) =>
+      (containers[tier.key] ?? []).map((modelId, position) => ({
+        modelId,
+        tier: tier.key,
+        position,
+      }))
     );
-    const result = await saveTierList({ id: listId, title, description, isPublic, placements });
+    const result = await saveTierList({ id: listId, title, description, isPublic, tiers, placements });
     setSaving(false);
     if (result?.error) setError(result.error);
     else if (result?.slug) router.push(`/t/${result.slug}`);
   }
 
-  const placedCount = TIERS.reduce((n, t) => n + containers[t].length, 0);
+  const placedCount = tiers.reduce((n, t) => n + (containers[t.key]?.length ?? 0), 0);
   const activeFilterCount =
     (selectedVendors.size > 0 ? 1 : 0) +
     (licenseFilter !== "all" ? 1 : 0) +
@@ -354,30 +410,91 @@ export default function TierListBuilder({
       >
         {/* tier board */}
         <div data-export-board className="border border-black/60 bg-black/60">
-          {TIERS.map((tier) => (
-            <div key={tier} className="flex min-h-20 border-b border-black/60 last:border-b-0">
-              <div
-                className="flex w-20 shrink-0 items-center justify-center p-2 text-center text-lg font-bold text-black sm:w-24"
-                style={{ backgroundColor: TIER_COLORS[tier] }}
-              >
-                {tier}
+          {tiers.map((tier, i) => (
+            <div key={tier.key} className="border-b border-black/60 last:border-b-0">
+              <div className="flex min-h-20">
+                <div
+                  className="group/label relative flex w-20 shrink-0 items-center justify-center break-words p-2 text-center font-bold leading-tight text-black sm:w-24"
+                  style={{
+                    backgroundColor: tier.color,
+                    fontSize: tier.label.length > 4 ? 13 : 18,
+                  }}
+                >
+                  {tier.label}
+                  <button
+                    type="button"
+                    aria-label="Edit tier"
+                    onClick={() => setEditingTier(editingTier === tier.key ? null : tier.key)}
+                    className="absolute right-1 top-1 hidden h-5 w-5 items-center justify-center rounded-sm bg-black/25 text-[11px] text-black hover:bg-black/40 group-hover/label:flex"
+                  >
+                    ✎
+                  </button>
+                </div>
+                <SortableContext items={containers[tier.key] ?? []} strategy={rectSortingStrategy}>
+                  <DroppableZone id={tier.key} className="flex flex-1 flex-wrap content-start items-start bg-surface">
+                    {(containers[tier.key] ?? []).map((id) => (
+                      <SortableChip
+                        key={id}
+                        model={modelById.get(id)!}
+                        onRemove={() => moveToPool(id)}
+                        removeLabel="Remove from tier"
+                        width="w-36"
+                      />
+                    ))}
+                  </DroppableZone>
+                </SortableContext>
               </div>
-              <SortableContext items={containers[tier]} strategy={rectSortingStrategy}>
-                <DroppableZone id={tier} className="flex flex-1 flex-wrap content-start items-start bg-surface">
-                  {containers[tier].map((id) => (
-                    <SortableChip
-                      key={id}
-                      model={modelById.get(id)!}
-                      onRemove={() => moveToPool(id)}
-                      removeLabel="Remove from tier"
-                      width="w-36"
-                    />
-                  ))}
-                </DroppableZone>
-              </SortableContext>
+              {editingTier === tier.key && (
+                <div className="flex flex-wrap items-center gap-3 border-t border-black/60 bg-surface-2 px-3 py-2">
+                  <input
+                    value={tier.label}
+                    onChange={(e) => updateTier(tier.key, { label: e.target.value.slice(0, 24) })}
+                    maxLength={24}
+                    className="w-36 rounded-sm border border-edge bg-surface px-2 py-1 text-sm outline-none focus:border-muted"
+                  />
+                  <div className="flex items-center gap-1">
+                    {TIER_PALETTE.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={`Color ${c}`}
+                        onClick={() => updateTier(tier.key, { color: c })}
+                        className={`h-5 w-5 rounded-sm ${tier.color === c ? "ring-2 ring-white" : "ring-1 ring-black/40"}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                  <div className="ml-auto flex items-center gap-1 text-sm">
+                    <button type="button" disabled={i === 0} onClick={() => moveTier(tier.key, -1)}
+                      className="rounded-sm border border-edge px-2 py-1 text-muted hover:text-foreground disabled:opacity-30">
+                      ▲
+                    </button>
+                    <button type="button" disabled={i === tiers.length - 1} onClick={() => moveTier(tier.key, 1)}
+                      className="rounded-sm border border-edge px-2 py-1 text-muted hover:text-foreground disabled:opacity-30">
+                      ▼
+                    </button>
+                    <button type="button" disabled={tiers.length <= 1} onClick={() => removeTier(tier.key)}
+                      className="rounded-sm border border-edge px-2 py-1 text-rose-400 hover:bg-surface disabled:opacity-30">
+                      Delete row
+                    </button>
+                    <button type="button" onClick={() => setEditingTier(null)}
+                      className="rounded-sm border border-edge px-2 py-1 text-muted hover:text-foreground">
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={addTier}
+          disabled={tiers.length >= 10}
+          className="rounded-sm border border-dashed border-edge px-3 py-1.5 text-sm text-muted hover:border-muted hover:text-foreground disabled:opacity-30"
+        >
+          + Add tier
+        </button>
 
         {/* pool */}
         <div className="border border-edge bg-surface">
@@ -385,7 +502,7 @@ export default function TierListBuilder({
             <h3 className="mr-auto text-sm font-semibold">
               Pool{" "}
               <span className="font-normal text-muted">
-                {visiblePool.length} of {containers.pool.length}
+                {visiblePool.length} of {containers.pool?.length ?? 0}
               </span>
             </h3>
             <input
@@ -508,36 +625,36 @@ export default function TierListBuilder({
                 )}
               </div>
               {labsOpen && (
-              <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto">
-                {vendors.map((v) => {
-                  const active = selectedVendors.has(v.slug);
-                  return (
-                    <button
-                      key={v.slug}
-                      type="button"
-                      onClick={() =>
-                        setSelectedVendors((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(v.slug)) next.delete(v.slug);
-                          else next.add(v.slug);
-                          return next;
-                        })
-                      }
-                      className={`flex items-center gap-1.5 rounded-sm border px-2 py-1 text-xs font-medium transition-colors ${
-                        active
-                          ? "border-foreground bg-foreground text-black"
-                          : "border-edge bg-surface text-muted hover:border-muted hover:text-foreground"
-                      }`}
-                    >
-                      <span className="flex h-4 w-4 items-center justify-center rounded-[2px] bg-neutral-900 p-px">
-                        <VendorLogo vendorSlug={v.slug} className="h-full w-full" />
-                      </span>
-                      {v.name}
-                      <span className={active ? "text-black/60" : "text-muted/70"}>{v.count}</span>
-                    </button>
-                  );
-                })}
-              </div>
+                <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto">
+                  {vendors.map((v) => {
+                    const active = selectedVendors.has(v.slug);
+                    return (
+                      <button
+                        key={v.slug}
+                        type="button"
+                        onClick={() =>
+                          setSelectedVendors((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(v.slug)) next.delete(v.slug);
+                            else next.add(v.slug);
+                            return next;
+                          })
+                        }
+                        className={`flex items-center gap-1.5 rounded-sm border px-2 py-1 text-xs font-medium transition-colors ${
+                          active
+                            ? "border-foreground bg-foreground text-black"
+                            : "border-edge bg-surface text-muted hover:border-muted hover:text-foreground"
+                        }`}
+                      >
+                        <span className="flex h-4 w-4 items-center justify-center rounded-[2px] bg-neutral-900 p-px">
+                          <VendorLogo vendorSlug={v.slug} className="h-full w-full" />
+                        </span>
+                        {v.name}
+                        <span className={active ? "text-black/60" : "text-muted/70"}>{v.count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
@@ -549,7 +666,7 @@ export default function TierListBuilder({
             >
               {visiblePool.length === 0 ? (
                 <span className="col-span-full self-center px-3 py-6 text-sm text-muted">
-                  {containers.pool.length === 0
+                  {(containers.pool?.length ?? 0) === 0
                     ? "Everything is ranked. Nice."
                     : "No models match your filters."}
                 </span>

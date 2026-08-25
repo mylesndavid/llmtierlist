@@ -6,7 +6,8 @@ import ShareButton from "@/components/ShareButton";
 import FullscreenBoard from "@/components/FullscreenBoard";
 import { deleteTierList } from "@/lib/actions";
 import { redirect } from "next/navigation";
-import { TIERS, type Model, type Tier } from "@/lib/types";
+import VoteButtons from "@/components/VoteButtons";
+import type { Model } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +41,10 @@ export default async function TierListPage({
   if (!list) notFound();
 
   const modelById = new Map(models.map((m) => [m.id, m]));
-  const placements = new Map<Tier, Model[]>(TIERS.map((t) => [t, []]));
+  const placements = new Map<string, Model[]>(list.tiers.map((t) => [t.key, []]));
   for (const item of list.items) {
     const model = modelById.get(item.model_id);
-    if (model) placements.get(item.tier)!.push(model);
+    if (model) placements.get(item.tier)?.push(model);
   }
 
   const isOwner = user?.id === list.user_id;
@@ -82,6 +83,13 @@ export default async function TierListPage({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <VoteButtons
+            modelId={list.id}
+            netScore={list.score}
+            userVote={list.myVote}
+            signedIn={!!user}
+            kind="list"
+          />
           <ShareButton />
           {isOwner && (
             <>
@@ -107,7 +115,7 @@ export default async function TierListPage({
         </div>
       </div>
       <FullscreenBoard title={list.title}>
-        <TierBoard placements={placements} />
+        <TierBoard placements={placements} tiers={list.tiers} />
       </FullscreenBoard>
     </div>
   );

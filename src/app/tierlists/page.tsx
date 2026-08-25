@@ -38,24 +38,58 @@ export default async function TierListsPage() {
             <Link
               key={list.id}
               href={`/t/${list.slug}`}
-              className="border border-edge bg-surface p-4 transition-colors hover:border-muted"
+              className="border border-edge bg-surface transition-colors hover:border-muted"
             >
-              <h2 className="truncate font-semibold">{list.title}</h2>
-              {list.description && (
-                <p className="mt-1 line-clamp-2 text-sm text-muted">{list.description}</p>
-              )}
-              <p className="mt-3 text-xs text-muted">
-                by{" "}
-                <span className="font-medium text-foreground/80">
-                  {list.profiles?.display_name || list.profiles?.username || "anonymous"}
-                </span>{" "}
-                ·{" "}
-                {new Date(list.updated_at).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </p>
+              {/* mini board preview */}
+              <div className="border-b border-edge bg-black/40 p-2">
+                <div className="space-y-px">
+                  {list.tiers.slice(0, 6).map((tier) => {
+                    const count = Math.min(list.tier_counts[tier.key] ?? 0, 14);
+                    return (
+                      <div key={tier.key} className="flex items-center gap-px">
+                        <span
+                          className="h-3.5 w-6 shrink-0"
+                          style={{ backgroundColor: tier.color }}
+                        />
+                        {Array.from({ length: count }).map((_, i) => (
+                          <span key={i} className="h-3.5 w-3.5 shrink-0 bg-surface-2" />
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="flex items-center gap-2">
+                  <h2 className="min-w-0 flex-1 truncate font-semibold">{list.title}</h2>
+                  <span
+                    className={`shrink-0 font-mono text-sm font-semibold ${
+                      list.score > 0
+                        ? "text-emerald-400"
+                        : list.score < 0
+                          ? "text-rose-400"
+                          : "text-muted"
+                    }`}
+                  >
+                    {list.score > 0 ? `+${list.score}` : list.score}
+                  </span>
+                </div>
+                {list.description && (
+                  <p className="mt-1 line-clamp-2 text-sm text-muted">{list.description}</p>
+                )}
+                <p className="mt-3 text-xs text-muted">
+                  by{" "}
+                  <span className="font-medium text-foreground/80">
+                    {list.profiles?.display_name || list.profiles?.username || "anonymous"}
+                  </span>{" "}
+                  ·{" "}
+                  {new Date(list.updated_at).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
             </Link>
           ))}
         </div>

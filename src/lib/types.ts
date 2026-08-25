@@ -1,5 +1,25 @@
 export const TIERS = ["S", "A", "B", "C", "D", "F"] as const;
-export type Tier = (typeof TIERS)[number];
+export type Tier = string;
+
+export interface TierDef {
+  key: string;
+  label: string;
+  color: string;
+}
+
+export const DEFAULT_TIERS: TierDef[] = [
+  { key: "S", label: "S", color: "#ff7f7e" },
+  { key: "A", label: "A", color: "#ffbf7f" },
+  { key: "B", label: "B", color: "#ffdf80" },
+  { key: "C", label: "C", color: "#ffff7f" },
+  { key: "D", label: "D", color: "#bfff7f" },
+  { key: "F", label: "F", color: "#7fff7f" },
+];
+
+export const TIER_PALETTE = [
+  "#ff7f7e", "#ffbf7f", "#ffdf80", "#ffff7f", "#bfff7f", "#7fff7f",
+  "#7fffff", "#7fbfff", "#bf7fff", "#ff7fbf", "#d4d4d4", "#8c8c8c",
+];
 
 export interface SessionUser {
   id: string;
@@ -72,6 +92,7 @@ export interface TierList {
   title: string;
   description: string;
   is_public: boolean;
+  tiers: TierDef[];
   created_at: string;
   updated_at: string;
   profiles?: Profile;
@@ -80,6 +101,7 @@ export interface TierList {
 export interface TierListItem {
   tier_list_id: string;
   model_id: string;
-  tier: Tier;
+  tier: string;
+  tier_index: number;
   position: number;
 }
