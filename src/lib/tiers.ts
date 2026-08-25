@@ -81,6 +81,18 @@ export function bucketIntoTiers(
 
 export function formatContextWindow(tokens: number | null): string {
   if (!tokens) return "—";
-  if (tokens >= 1_000_000) return `${tokens / 1_000_000}M tokens`;
+  if (tokens >= 1_000_000) {
+    const m = tokens / 1_000_000;
+    return `${m >= 10 ? Math.round(m) : Math.round(m * 10) / 10}M tokens`;
+  }
   return `${Math.round(tokens / 1000)}K tokens`;
+}
+
+/** Strip markdown links/emphasis from OpenRouter descriptions for plain display. */
+export function plainDescription(text: string): string {
+  return text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`#]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }

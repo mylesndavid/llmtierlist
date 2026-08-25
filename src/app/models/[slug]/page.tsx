@@ -6,7 +6,7 @@ import {
   getReviewsForModel,
   getUserVotes,
 } from "@/lib/data";
-import { formatContextWindow } from "@/lib/tiers";
+import { formatContextWindow, plainDescription } from "@/lib/tiers";
 import VoteButtons from "@/components/VoteButtons";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
@@ -67,7 +67,7 @@ export default async function ModelPage({
           />
         </div>
         <p className="mt-3 max-w-2xl break-words text-sm leading-relaxed text-foreground/90 line-clamp-4 sm:line-clamp-none">
-          {model.description}
+          {plainDescription(model.description)}
         </p>
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
           <span>Context: <span className="text-foreground">{formatContextWindow(model.context_window)}</span></span>

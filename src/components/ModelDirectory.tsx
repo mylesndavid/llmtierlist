@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ModelWithStats } from "@/lib/types";
-import { formatContextWindow } from "@/lib/tiers";
+import { formatContextWindow, plainDescription } from "@/lib/tiers";
 import VoteButtons from "./VoteButtons";
 import StarRating from "./StarRating";
 import VendorLogo from "./VendorLogo";
@@ -104,7 +104,7 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
                 signedIn={signedIn}
               />
             </div>
-            <p className="line-clamp-2 text-sm text-muted">{m.description}</p>
+            <p className="line-clamp-2 break-words text-sm text-muted">{plainDescription(m.description)}</p>
             <div className="mt-auto flex items-center gap-3 text-xs text-muted">
               <span className="border border-edge px-2 py-0.5">
                 {m.license === "open-weights" ? "Open weights" : "Proprietary"}
