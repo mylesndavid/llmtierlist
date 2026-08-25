@@ -13,6 +13,25 @@ interface Props {
   kind?: "model" | "list";
 }
 
+function Chevron({ up, size }: { up: boolean; size: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={up ? "m18 15-6-6-6 6" : "m6 9 6 6 6-6"} />
+    </svg>
+  );
+}
+
+/** Product-Hunt-style vertical vote pill: ▲ / score / ▼. */
 export default function VoteButtons({ modelId, netScore, userVote, signedIn, size = "sm", kind = "model" }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -34,27 +53,30 @@ export default function VoteButtons({ modelId, netScore, userVote, signedIn, siz
     });
   }
 
-  const btn =
-    size === "lg"
-      ? "h-9 w-9 text-lg"
-      : "h-7 w-7 text-sm";
+  const lg = size === "lg";
+  const icon = lg ? 18 : 14;
 
   return (
-    <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()}>
+    <div
+      className={`flex shrink-0 select-none flex-col items-stretch overflow-hidden rounded-md border border-edge bg-surface-2/60 ${
+        lg ? "w-12" : "w-9"
+      }`}
+      onClick={(e) => e.preventDefault()}
+    >
       <button
         type="button"
         aria-label="Upvote"
         onClick={() => vote(1)}
-        className={`${btn} grid place-items-center rounded-md border transition-colors ${
+        className={`flex items-center justify-center pb-0.5 ${lg ? "pt-2" : "pt-1.5"} transition-colors ${
           optimistic.userVote === 1
-            ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
-            : "border-edge text-muted hover:border-emerald-500 hover:text-emerald-400"
+            ? "text-emerald-400"
+            : "text-muted hover:text-foreground active:text-emerald-400"
         }`}
       >
-        ▲
+        <Chevron up size={icon} />
       </button>
       <span
-        className={`min-w-8 text-center font-mono text-sm font-semibold ${
+        className={`text-center font-mono font-bold leading-none ${lg ? "text-sm" : "text-[11px]"} ${
           optimistic.netScore > 0
             ? "text-emerald-400"
             : optimistic.netScore < 0
@@ -62,19 +84,19 @@ export default function VoteButtons({ modelId, netScore, userVote, signedIn, siz
               : "text-muted"
         }`}
       >
-        {optimistic.netScore > 0 ? `+${optimistic.netScore}` : optimistic.netScore}
+        {optimistic.netScore}
       </span>
       <button
         type="button"
         aria-label="Downvote"
         onClick={() => vote(-1)}
-        className={`${btn} grid place-items-center rounded-md border transition-colors ${
+        className={`flex items-center justify-center pt-0.5 ${lg ? "pb-2" : "pb-1.5"} transition-colors ${
           optimistic.userVote === -1
-            ? "border-rose-500 bg-rose-500/20 text-rose-400"
-            : "border-edge text-muted hover:border-rose-500 hover:text-rose-400"
+            ? "text-rose-400"
+            : "text-muted hover:text-foreground active:text-rose-400"
         }`}
       >
-        ▼
+        <Chevron up={false} size={icon} />
       </button>
     </div>
   );

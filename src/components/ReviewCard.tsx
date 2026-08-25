@@ -58,7 +58,7 @@ export default function ReviewCard({
         )}
       </div>
       {review.title && <h3 className="mt-3 font-semibold">{review.title}</h3>}
-      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+      <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
         {review.body}
       </p>
     </article>

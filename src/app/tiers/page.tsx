@@ -14,11 +14,9 @@ export default async function CommunityTiersPage() {
   const modelById = new Map(models.map((m) => [m.id, m]));
 
   const placements = new Map<string, ModelWithStats[]>(TIERS.map((t) => [t, []]));
-  let totalVotes = 0;
   for (const seed of COMMUNITY_SEED) {
     const model = modelById.get(seed.id);
     if (!model) continue;
-    totalVotes += model.stats.upvotes + model.stats.downvotes;
     placements.get(seededTier(seed.tier, communityScore(model)))?.push(model);
   }
   // highest-scoring models lead each row
@@ -38,15 +36,6 @@ export default async function CommunityTiersPage() {
       <FullscreenBoard title="The official LLM tier list">
         <TierBoard placements={placements} />
       </FullscreenBoard>
-      <p className="max-w-3xl text-xs text-muted">
-        How it works: this board covers today&apos;s relevant models (not the
-        full {models.length}-model catalog) and starts from editorial seeds
-        based on arena rankings, benchmarks, and community discourse. From
-        there it&apos;s yours: every ~10 net points from votes and tier-list
-        placements shifts a model a full tier, up to two tiers either way.
-        {totalVotes > 0 ? ` ${totalVotes} votes counted so far.` : ""} Vote on
-        the leaderboard or any model page to move things.
-      </p>
     </div>
   );
 }
