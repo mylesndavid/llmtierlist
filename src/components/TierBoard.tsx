@@ -21,9 +21,9 @@ export default function TierBoard({
       {tiers.map((tier) => {
         const models = placements.get(tier.key) ?? [];
         return (
-          <div key={tier.key} className="flex min-h-20 border-b border-black/60 last:border-b-0">
+          <div key={tier.key} className="flex min-h-14 border-b border-black/60 last:border-b-0 sm:min-h-20">
             <div
-              className="flex w-20 shrink-0 items-center justify-center break-words p-2 text-center text-lg font-bold leading-tight text-black sm:w-24"
+              className="flex w-12 shrink-0 items-center justify-center break-words p-1 text-center text-sm font-bold leading-tight text-black sm:w-24 sm:p-2 sm:text-lg"
               style={{ backgroundColor: tier.color }}
             >
               {tier.label}
@@ -34,11 +34,11 @@ export default function TierBoard({
               ) : (
                 models.map((m) =>
                   linkModels ? (
-                    <Link key={m.id} href={`/models/${m.slug}`} className="w-36 hover:brightness-125">
+                    <Link key={m.id} href={`/models/${m.slug}`} className="w-[6.5rem] hover:brightness-125 sm:w-36">
                       <ModelChip model={m} />
                     </Link>
                   ) : (
-                    <div key={m.id} className="w-36">
+                    <div key={m.id} className="w-[6.5rem] sm:w-36">
                       <ModelChip model={m} />
                     </div>
                   )

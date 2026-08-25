@@ -441,9 +441,9 @@ export default function TierListBuilder({
         <div data-export-board className="border border-black/60 bg-black/60">
           {tiers.map((tier, i) => (
             <div key={tier.key} className="border-b border-black/60 last:border-b-0">
-              <div className="flex min-h-20">
+              <div className="flex min-h-14 sm:min-h-20">
                 <div
-                  className="group/label relative flex w-20 shrink-0 items-center justify-center break-words p-2 text-center font-bold leading-tight text-black sm:w-24"
+                  className="group/label relative flex w-12 shrink-0 items-center justify-center break-words p-1 text-center font-bold leading-tight text-black sm:w-24 sm:p-2"
                   style={{
                     backgroundColor: tier.color,
                     fontSize: tier.label.length > 4 ? 13 : 18,
@@ -467,7 +467,7 @@ export default function TierListBuilder({
                         model={modelById.get(id)!}
                         onRemove={() => moveToPool(id)}
                         removeLabel="Remove from tier"
-                        width="w-36"
+                        width="w-[6.5rem] sm:w-36"
                       />
                     ))}
                     <button
@@ -477,7 +477,7 @@ export default function TierListBuilder({
                         setQuickAddTier(quickAddTier === tier.key ? null : tier.key);
                         setQuickAddQuery("");
                       }}
-                      className={`grid h-20 w-10 place-items-center text-xl transition-colors ${
+                      className={`grid h-14 w-8 place-items-center text-xl transition-colors sm:h-20 sm:w-10 ${
                         quickAddTier === tier.key
                           ? "bg-surface-2 text-foreground"
                           : "text-muted/40 hover:bg-surface-2 hover:text-foreground"
@@ -777,7 +777,7 @@ export default function TierListBuilder({
           <SortableContext items={visiblePool} strategy={rectSortingStrategy}>
             <DroppableZone
               id="pool"
-              className="grid max-h-[420px] min-h-20 grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] content-start overflow-y-auto"
+              className="grid max-h-[420px] min-h-14 grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] content-start overflow-y-auto sm:min-h-20 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]"
             >
               {visiblePool.length === 0 ? (
                 <span className="col-span-full self-center px-3 py-6 text-sm text-muted">
@@ -801,7 +801,7 @@ export default function TierListBuilder({
 
         <DragOverlay dropAnimation={dropAnimation}>
           {activeId && modelById.has(activeId) ? (
-            <div className="w-36 scale-110 cursor-grabbing shadow-[0_12px_32px_rgba(0,0,0,0.7)] ring-2 ring-white/40">
+            <div className="w-[6.5rem] scale-110 cursor-grabbing sm:w-36 shadow-[0_12px_32px_rgba(0,0,0,0.7)] ring-2 ring-white/40">
               <ModelChip model={modelById.get(activeId)!} />
             </div>
           ) : null}

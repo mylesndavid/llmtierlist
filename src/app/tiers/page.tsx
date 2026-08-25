@@ -7,7 +7,7 @@ import { TIERS, type ModelWithStats } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Community Tier List" };
+export const metadata = { title: "The Official LLM Tier List" };
 
 export default async function CommunityTiersPage() {
   const models = await getBaseModelsWithStats();
@@ -29,13 +29,13 @@ export default async function CommunityTiersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Community tier list</h1>
+        <h1 className="text-2xl font-bold">The official LLM tier list</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
-          The models people are actually talking about right now — and where
-          the community puts them. Votes move models up and down from here.
+          One board, decided by everyone. The models people actually talk
+          about, placed by community votes — cast yours to move them.
         </p>
       </div>
-      <FullscreenBoard title="Community tier list">
+      <FullscreenBoard title="The official LLM tier list">
         <TierBoard placements={placements} />
       </FullscreenBoard>
       <p className="max-w-3xl text-xs text-muted">

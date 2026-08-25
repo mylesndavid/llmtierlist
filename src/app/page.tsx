@@ -67,7 +67,7 @@ export default async function Home({
             href="/tiers"
             className="rounded-sm border border-edge bg-surface px-5 py-2.5 font-semibold hover:bg-surface-2"
           >
-            Community tiers
+            Official tier list
           </Link>
         </div>
         <p className="mt-6 text-sm text-muted">

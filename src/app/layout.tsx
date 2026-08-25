@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/data";
 import { signOut } from "@/lib/actions";
 import UserMenu from "@/components/UserMenu";
 import TrackVisit from "@/components/TrackVisit";
+import MobileNav from "@/components/MobileNav";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -41,16 +42,17 @@ export default async function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}>
         <header className="sticky top-0 z-40 border-b border-edge bg-black">
-          <nav className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
+          <nav className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:gap-6">
+            <MobileNav />
             <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="" className="h-7 w-7" />
               LLM<span className="text-muted">TierList</span>
             </Link>
             <div className="hidden items-center gap-5 text-sm text-muted sm:flex">
+              <Link href="/tiers" className="hover:text-foreground">Official tier list</Link>
+              <Link href="/tierlists" className="hover:text-foreground">Community lists</Link>
               <Link href="/models" className="hover:text-foreground">Models</Link>
-              <Link href="/tiers" className="hover:text-foreground">Community Tiers</Link>
-              <Link href="/tierlists" className="hover:text-foreground">Tier Lists</Link>
             </div>
             <div className="ml-auto flex items-center gap-3 text-sm">
               <Link
