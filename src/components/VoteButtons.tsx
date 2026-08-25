@@ -54,29 +54,16 @@ export default function VoteButtons({ modelId, netScore, userVote, signedIn, siz
   }
 
   const lg = size === "lg";
-  const icon = lg ? 18 : 14;
+  const icon = lg ? 20 : 16;
+  const btn = lg ? "h-10 w-12" : "h-9 w-10";
 
   return (
     <div
-      className={`flex shrink-0 select-none flex-col items-stretch overflow-hidden rounded-md border border-edge bg-surface-2/60 ${
-        lg ? "w-12" : "w-9"
-      }`}
+      className="flex shrink-0 select-none items-center gap-2"
       onClick={(e) => e.preventDefault()}
     >
-      <button
-        type="button"
-        aria-label="Upvote"
-        onClick={() => vote(1)}
-        className={`flex items-center justify-center pb-0.5 ${lg ? "pt-2" : "pt-1.5"} transition-colors ${
-          optimistic.userVote === 1
-            ? "text-emerald-400"
-            : "text-muted hover:text-foreground active:text-emerald-400"
-        }`}
-      >
-        <Chevron up size={icon} />
-      </button>
       <span
-        className={`text-center font-mono font-bold leading-none ${lg ? "text-sm" : "text-[11px]"} ${
+        className={`min-w-[2ch] text-right font-mono font-bold leading-none ${lg ? "text-base" : "text-sm"} ${
           optimistic.netScore > 0
             ? "text-emerald-400"
             : optimistic.netScore < 0
@@ -86,18 +73,32 @@ export default function VoteButtons({ modelId, netScore, userVote, signedIn, siz
       >
         {optimistic.netScore}
       </span>
-      <button
-        type="button"
-        aria-label="Downvote"
-        onClick={() => vote(-1)}
-        className={`flex items-center justify-center pt-0.5 ${lg ? "pb-2" : "pb-1.5"} transition-colors ${
-          optimistic.userVote === -1
-            ? "text-rose-400"
-            : "text-muted hover:text-foreground active:text-rose-400"
-        }`}
-      >
-        <Chevron up={false} size={icon} />
-      </button>
+      <div className="flex flex-col overflow-hidden rounded-md border border-edge bg-surface-2/60">
+        <button
+          type="button"
+          aria-label="Upvote"
+          onClick={() => vote(1)}
+          className={`flex ${btn} items-center justify-center border-b border-edge transition-colors ${
+            optimistic.userVote === 1
+              ? "bg-emerald-500/15 text-emerald-400"
+              : "text-muted hover:text-foreground active:bg-emerald-500/15 active:text-emerald-400"
+          }`}
+        >
+          <Chevron up size={icon} />
+        </button>
+        <button
+          type="button"
+          aria-label="Downvote"
+          onClick={() => vote(-1)}
+          className={`flex ${btn} items-center justify-center transition-colors ${
+            optimistic.userVote === -1
+              ? "bg-rose-500/15 text-rose-400"
+              : "text-muted hover:text-foreground active:bg-rose-500/15 active:text-rose-400"
+          }`}
+        >
+          <Chevron up={false} size={icon} />
+        </button>
+      </div>
     </div>
   );
 }
