@@ -52,17 +52,36 @@ export async function handleCallback(code: string): Promise<SessionUser> {
   const displayName =
     [user.first_name, user.last_name].filter(Boolean).join(" ") || null;
 
-  const existing = await d1Query<{ username: string }>(
-    "select username from users where id = ?",
-    [user.id]
-  );
+  const existing = await d1Query<{
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    onboarded: number;
+  }>("select username, display_name, avatar_url, onboarded from users where id = ?", [
+    user.id,
+  ]);
   let username: string;
+  let onboarded = false;
   if (existing.length > 0) {
     username = existing[0].username;
+    onboarded = !!existing[0].onboarded;
+    // never clobber a custom avatar or chosen display name with WorkOS values
     await d1Query(
-      "update users set email = ?, display_name = ?, avatar_url = ? where id = ?",
+      `update users set email = ?,
+         display_name = coalesce(display_name, ?),
+         avatar_url = case when avatar_url like '/avatars/%' then avatar_url else coalesce(?, avatar_url) end
+       where id = ?`,
       [user.email, displayName, user.profile_picture_url, user.id]
     );
+    const row = existing[0];
+    return {
+      id: user.id,
+      email: user.email,
+      username,
+      display_name: row.display_name ?? displayName,
+      avatar_url: row.avatar_url ?? user.profile_picture_url,
+      onboarded,
+    };
   } else {
     const base =
       user.email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "") || "user";
@@ -84,6 +103,7 @@ export async function handleCallback(code: string): Promise<SessionUser> {
     username,
     display_name: displayName,
     avatar_url: user.profile_picture_url,
+    onboarded,
   };
 }
 

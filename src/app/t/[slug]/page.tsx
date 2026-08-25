@@ -62,7 +62,15 @@ export default async function TierListPage({
             )}
           </div>
           <p className="mt-1 text-sm text-muted">
-            by {author} · updated{" "}
+            by{" "}
+            {list.profiles?.username ? (
+              <Link href={`/u/${list.profiles.username}`} className="hover:text-foreground hover:underline">
+                {author}
+              </Link>
+            ) : (
+              author
+            )}{" "}
+            · updated{" "}
             {new Date(list.updated_at).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",

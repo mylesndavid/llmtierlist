@@ -7,6 +7,19 @@ export interface SessionUser {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  onboarded: boolean;
+}
+
+export interface PublicProfile {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string;
+  created_at: string;
+  list_count: number;
+  review_count: number;
+  vote_count: number;
 }
 
 export interface Model {

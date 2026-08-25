@@ -8,6 +8,9 @@ create table if not exists users (
   username text not null unique,
   display_name text,
   avatar_url text,
+  avatar_blob text,                 -- data URI of the uploaded avatar, served via /avatars/[username]
+  bio text not null default '',
+  onboarded integer not null default 0,
   created_at text not null default (datetime('now'))
 );
 

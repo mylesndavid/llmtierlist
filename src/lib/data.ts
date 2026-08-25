@@ -4,6 +4,7 @@ import type {
   Model,
   ModelStats,
   ModelWithStats,
+  PublicProfile,
   Review,
   TierList,
   TierListItem,
@@ -130,6 +131,64 @@ export async function getPublicTierLists(limit = 30): Promise<TierList[]> {
     [limit]
   );
   return rows.map(toTierList);
+}
+
+export async function getProfileByUsername(username: string): Promise<PublicProfile | null> {
+  const rows = await d1Query<PublicProfile>(
+    `select u.id, u.username, u.display_name, u.avatar_url, u.bio, u.created_at,
+       (select count(*) from tier_lists tl where tl.user_id = u.id and tl.is_public = 1) as list_count,
+       (select count(*) from reviews r where r.user_id = u.id) as review_count,
+       (select count(*) from votes v where v.user_id = u.id) as vote_count
+     from users u where u.username = ?`,
+    [username]
+  );
+  return rows[0] ?? null;
+}
+
+export async function getTierListsByUser(
+  userId: string,
+  includePrivate: boolean
+): Promise<TierList[]> {
+  const rows = await d1Query<TierListRow>(
+    `select * from tier_lists where user_id = ? ${includePrivate ? "" : "and is_public = 1"}
+     order by updated_at desc`,
+    [userId]
+  );
+  return rows.map(toTierList);
+}
+
+export interface UserReview {
+  rating: number;
+  title: string;
+  body: string;
+  created_at: string;
+  model_name: string;
+  model_slug: string;
+}
+
+export async function getReviewsByUser(userId: string, limit = 10): Promise<UserReview[]> {
+  return d1Query<UserReview>(
+    `select r.rating, r.title, r.body, r.created_at, m.name as model_name, m.slug as model_slug
+     from reviews r join models m on m.id = r.model_id
+     where r.user_id = ? order by r.created_at desc limit ?`,
+    [userId, limit]
+  );
+}
+
+/** Full own-user row for the settings/welcome forms. */
+export async function getOwnProfile() {
+  const user = await getSessionUser();
+  if (!user) return null;
+  const rows = await d1Query<{
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    bio: string;
+    onboarded: number;
+  }>("select username, display_name, avatar_url, bio, onboarded from users where id = ?", [
+    user.id,
+  ]);
+  return rows[0] ? { ...rows[0], onboarded: !!rows[0].onboarded } : null;
 }
 
 export async function getMyTierLists(): Promise<TierList[]> {

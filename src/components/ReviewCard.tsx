@@ -1,6 +1,8 @@
+import Link from "next/link";
 import type { Review } from "@/lib/types";
 import { deleteReview } from "@/lib/actions";
 import StarRating from "./StarRating";
+import Avatar from "./Avatar";
 
 export default function ReviewCard({
   review,
@@ -17,17 +19,21 @@ export default function ReviewCard({
   return (
     <article className="rounded-sm border border-edge bg-surface p-4">
       <div className="flex items-center gap-3">
-        {author?.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={author.avatar_url} alt="" className="h-8 w-8 rounded-full" />
-        ) : (
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-2 text-xs font-bold uppercase text-muted">
-            {name.slice(0, 2)}
-          </span>
-        )}
+        <Link href={author ? `/u/${author.username}` : "#"}>
+          <Avatar src={author?.avatar_url} name={name} size={32} />
+        </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-semibold">{name}</span>
+            {author ? (
+              <Link
+                href={`/u/${author.username}`}
+                className="truncate text-sm font-semibold hover:underline"
+              >
+                {name}
+              </Link>
+            ) : (
+              <span className="truncate text-sm font-semibold">{name}</span>
+            )}
             <StarRating rating={review.rating} size="text-xs" />
           </div>
           <time className="text-xs text-muted">

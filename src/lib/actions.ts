@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { customAlphabet } from "nanoid";
 import { d1Query } from "./d1";
-import { destroySession, getSessionUser } from "./auth";
+import { createSession, destroySession, getSessionUser } from "./auth";
 import { TIERS, type Tier } from "./types";
 
 const slugId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 10);
@@ -13,7 +13,69 @@ const rowId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 16);
 async function requireUser() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  if (!user.onboarded) redirect("/welcome");
   return user;
+}
+
+// ============ profile ============
+
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+const RESERVED = new Set([
+  "admin", "api", "auth", "avatars", "login", "logout", "me", "models",
+  "settings", "t", "tierlists", "tiers", "u", "welcome",
+]);
+
+export async function updateProfile(formData: FormData) {
+  const session = await getSessionUser();
+  if (!session) redirect("/login");
+
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  const displayName = String(formData.get("display_name") ?? "").trim().slice(0, 60);
+  const bio = String(formData.get("bio") ?? "").trim().slice(0, 280);
+  const avatarData = String(formData.get("avatar_data") ?? "");
+  const next = String(formData.get("next") ?? "");
+
+  if (!USERNAME_RE.test(username)) {
+    return { error: "Usernames are 3–20 characters: lowercase letters, numbers, underscores." };
+  }
+  if (RESERVED.has(username)) {
+    return { error: "That username is reserved." };
+  }
+  const taken = await d1Query(
+    "select 1 from users where username = ? and id != ?",
+    [username, session.id]
+  );
+  if (taken.length > 0) {
+    return { error: "That username is taken." };
+  }
+
+  let avatarUrl = session.avatar_url;
+  if (avatarData) {
+    if (!avatarData.startsWith("data:image/jpeg;base64,") || avatarData.length > 400_000) {
+      return { error: "Invalid image upload." };
+    }
+    await d1Query("update users set avatar_blob = ? where id = ?", [avatarData, session.id]);
+    avatarUrl = `/avatars/${username}`;
+  } else if (avatarUrl?.startsWith("/avatars/")) {
+    avatarUrl = `/avatars/${username}`; // keep custom photo in sync with a renamed username
+  }
+
+  await d1Query(
+    `update users set username = ?, display_name = ?, bio = ?, avatar_url = ?, onboarded = 1
+     where id = ?`,
+    [username, displayName || null, bio, avatarUrl, session.id]
+  );
+
+  await createSession({
+    ...session,
+    username,
+    display_name: displayName || null,
+    avatar_url: avatarUrl,
+    onboarded: true,
+  });
+
+  revalidatePath("/", "layout");
+  redirect(next && next.startsWith("/") ? next : `/u/${username}`);
 }
 
 // ============ votes ============

@@ -45,7 +45,11 @@ export default async function TierListsPage() {
                 <p className="mt-1 line-clamp-2 text-sm text-muted">{list.description}</p>
               )}
               <p className="mt-3 text-xs text-muted">
-                by {list.profiles?.display_name || list.profiles?.username || "anonymous"} ·{" "}
+                by{" "}
+                <span className="font-medium text-foreground/80">
+                  {list.profiles?.display_name || list.profiles?.username || "anonymous"}
+                </span>{" "}
+                ·{" "}
                 {new Date(list.updated_at).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",

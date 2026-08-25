@@ -13,6 +13,11 @@ export async function GET(request: Request) {
   try {
     const user = await handleCallback(code);
     await createSession(user);
+    if (!user.onboarded) {
+      return NextResponse.redirect(
+        `${origin}/welcome?next=${encodeURIComponent(next)}`
+      );
+    }
     return NextResponse.redirect(`${origin}${next}`);
   } catch (err) {
     console.error("Auth callback failed:", err);

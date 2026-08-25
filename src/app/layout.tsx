@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/data";
 import { signOut } from "@/lib/actions";
+import Avatar from "@/components/Avatar";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -45,6 +46,13 @@ export default async function RootLayout({
                 <div className="flex items-center gap-3">
                   <Link href="/me/tierlists" className="text-muted hover:text-foreground">
                     My Lists
+                  </Link>
+                  <Link
+                    href={user.onboarded ? `/u/${user.username}` : "/welcome"}
+                    title={`@${user.username}`}
+                    className="rounded-full ring-1 ring-edge transition hover:ring-muted"
+                  >
+                    <Avatar src={user.avatar_url} name={user.username} size={28} />
                   </Link>
                   <form action={signOut}>
                     <button className="text-muted hover:text-foreground" type="submit">
