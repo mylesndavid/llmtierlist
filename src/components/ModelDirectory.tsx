@@ -85,7 +85,7 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
         {filtered.map((m) => (
           <div
             key={m.id}
-            className="flex flex-col gap-3 border border-edge bg-surface p-4 transition-colors hover:border-muted"
+            className="flex min-w-0 flex-col gap-3 border border-edge bg-surface p-4 transition-colors hover:border-muted"
           >
             <div className="flex items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-sm bg-surface-2 p-1.5">
@@ -104,8 +104,8 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
                 signedIn={signedIn}
               />
             </div>
-            <p className="line-clamp-2 break-words text-sm text-muted">{plainDescription(m.description)}</p>
-            <div className="mt-auto flex items-center gap-3 text-xs text-muted">
+            <p className="line-clamp-2 text-sm text-muted [overflow-wrap:anywhere]">{plainDescription(m.description)}</p>
+            <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted">
               <span className="border border-edge px-2 py-0.5">
                 {m.license === "open-weights" ? "Open weights" : "Proprietary"}
               </span>

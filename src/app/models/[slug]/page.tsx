@@ -66,7 +66,7 @@ export default async function ModelPage({
             size="lg"
           />
         </div>
-        <p className="mt-3 max-w-2xl break-words text-sm leading-relaxed text-foreground/90 line-clamp-4 sm:line-clamp-none">
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-foreground/90 [overflow-wrap:anywhere] line-clamp-4 sm:line-clamp-none">
           {plainDescription(model.description)}
         </p>
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
