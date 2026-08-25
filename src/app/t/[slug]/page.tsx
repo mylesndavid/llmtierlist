@@ -61,6 +61,11 @@ export default async function TierListPage({
                 Private
               </span>
             )}
+            {list.rank_modes && (
+              <span className="border border-edge px-2 py-0.5 text-xs text-muted">
+                ranked by thinking mode
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-muted">
             by{" "}

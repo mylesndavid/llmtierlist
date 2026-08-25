@@ -31,6 +31,7 @@ export default async function EditTierListPage({
         initialIsPublic={list.is_public}
         initialTiers={list.tiers}
         initialItems={list.items}
+        initialRankModes={list.rank_modes}
         signedIn
       />
     </div>

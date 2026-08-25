@@ -117,11 +117,13 @@ console.log(`Fetched ${orModels.length} models.`);
 
 const rows = [];
 const seenSlugs = new Set();
+const reasoningById = new Map();
 for (const m of orModels) {
   const vendorSlug = m.id.split("/")[0].replace(/^~/, "");
   const slug = slugify(m.id);
   if (seenSlugs.has(slug)) continue;
   seenSlugs.add(slug);
+  reasoningById.set(m.id, m.reasoning ?? null);
   // strip "Vendor: " prefix from display names
   const name = m.name.includes(": ") ? m.name.slice(m.name.indexOf(": ") + 2) : m.name;
   rows.push({
@@ -134,22 +136,83 @@ for (const m of orModels) {
     license: m.hugging_face_id ? "open-weights" : "proprietary",
     release_date: m.created ? new Date(m.created * 1000).toISOString().slice(0, 10) : null,
     context_window: m.context_length ?? null,
+    base_model_id: null,
+    variant: null,
   });
 }
 
-// 9 params per row, D1 caps at 100 params per query -> 11 rows per batch
-const BATCH = 11;
+// -- variant detection ------------------------------------------------------
+const byId = new Map(rows.map((r) => [r.id, r]));
+
+for (const r of rows) {
+  const colon = r.id.indexOf(":");
+  if (colon > 0) {
+    const bare = r.id.slice(0, colon);
+    const suffix = r.id.slice(colon + 1);
+    if (byId.has(bare)) {
+      if (suffix === "thinking") {
+        r.variant = "thinking";
+        r.base_model_id = bare;
+      } else {
+        // pricing/service tiers (:free, :batch, :extended, …) are not distinct models
+        r.variant = "service";
+        r.base_model_id = bare;
+      }
+      continue;
+    }
+  }
+  if (r.id.includes("-thinking")) {
+    const candidate = r.id.replace("-thinking", "");
+    if (byId.has(candidate)) {
+      r.variant = "thinking";
+      r.base_model_id = candidate;
+    }
+  }
+}
+
+// Synthesize a "(Thinking)" entry for hybrid models: reasoning is supported
+// but optional, and no dedicated thinking SKU exists.
+const basesWithThinking = new Set(
+  rows.filter((r) => r.variant === "thinking").map((r) => r.base_model_id)
+);
+let synthetic = 0;
+for (const r of [...rows]) {
+  if (r.variant) continue;
+  const reasoning = reasoningById.get(r.id);
+  if (!reasoning || reasoning.mandatory !== false) continue;
+  if (basesWithThinking.has(r.id)) continue;
+  const slug = `${r.slug}-thinking`;
+  if (seenSlugs.has(slug)) continue;
+  seenSlugs.add(slug);
+  rows.push({
+    ...r,
+    id: `${r.id}#thinking`,
+    slug,
+    name: `${r.name} (Thinking)`,
+    base_model_id: r.id,
+    variant: "thinking",
+  });
+  synthetic++;
+}
+console.log(
+  `Variants: ${rows.filter((r) => r.variant === "service").length} service tiers collapsed, ` +
+  `${rows.filter((r) => r.variant === "thinking").length} thinking variants (${synthetic} synthesized).`
+);
+
+// 11 params per row, D1 caps at 100 params per query -> 9 rows per batch
+const BATCH = 9;
 for (let i = 0; i < rows.length; i += BATCH) {
   const batch = rows.slice(i, i + BATCH);
   await d1(
-    `insert into models (id, slug, name, vendor, vendor_slug, description, license, release_date, context_window)
-     values ${batch.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
+    `insert into models (id, slug, name, vendor, vendor_slug, description, license, release_date, context_window, base_model_id, variant)
+     values ${batch.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
      on conflict (id) do update set
        slug = excluded.slug, name = excluded.name, vendor = excluded.vendor,
        vendor_slug = excluded.vendor_slug, description = excluded.description,
        license = excluded.license, release_date = excluded.release_date,
-       context_window = excluded.context_window`,
-    batch.flatMap((r) => [r.id, r.slug, r.name, r.vendor, r.vendor_slug, r.description, r.license, r.release_date, r.context_window])
+       context_window = excluded.context_window,
+       base_model_id = excluded.base_model_id, variant = excluded.variant`,
+    batch.flatMap((r) => [r.id, r.slug, r.name, r.vendor, r.vendor_slug, r.description, r.license, r.release_date, r.context_window, r.base_model_id, r.variant])
   );
   if ((i / BATCH) % 8 === 0) console.log(`Upserted ${Math.min(i + BATCH, rows.length)}/${rows.length}`);
 }

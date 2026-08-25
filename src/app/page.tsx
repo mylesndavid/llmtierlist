@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentUser, getModelsWithStats, getUserVotes } from "@/lib/data";
+import { getCurrentUser, getBaseModelsWithStats, getUserVotes } from "@/lib/data";
 import { communityScore } from "@/lib/tiers";
 import VoteButtons from "@/components/VoteButtons";
 import StarRating from "@/components/StarRating";
@@ -14,7 +14,7 @@ export default async function Home({
 }) {
   const [{ error }, models, userVotes, user] = await Promise.all([
     searchParams,
-    getModelsWithStats(),
+    getBaseModelsWithStats(),
     getUserVotes(),
     getCurrentUser(),
   ]);

@@ -24,6 +24,8 @@ create table if not exists models (
   license text not null default 'proprietary' check (license in ('proprietary', 'open-weights')),
   release_date text,
   context_window integer,
+  base_model_id text,               -- set on variants (thinking mode / service tier)
+  variant text,                     -- 'thinking' | 'service' | null (base model)
   created_at text not null default (datetime('now'))
 );
 create index if not exists models_vendor_slug_idx on models (vendor_slug);
@@ -58,6 +60,7 @@ create table if not exists tier_lists (
   description text not null default '',
   is_public integer not null default 1,
   tiers text,                       -- JSON [{key,label,color}] row definitions; null = default S-F
+  rank_modes integer not null default 0, -- 1 = ranked at thinking-mode granularity
   created_at text not null default (datetime('now')),
   updated_at text not null default (datetime('now'))
 );

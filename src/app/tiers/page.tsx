@@ -1,4 +1,4 @@
-import { getModelsWithStats } from "@/lib/data";
+import { getBaseModelsWithStats } from "@/lib/data";
 import { bucketIntoTiers } from "@/lib/tiers";
 import TierBoard from "@/components/TierBoard";
 import FullscreenBoard from "@/components/FullscreenBoard";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Community Tier List" };
 
 export default async function CommunityTiersPage() {
-  const models = await getModelsWithStats();
+  const models = await getBaseModelsWithStats();
   const buckets = bucketIntoTiers(models);
   const placements = new Map<Tier, Model[]>(
     [...buckets.entries()].map(([tier, ms]) => [tier, ms as Model[]])

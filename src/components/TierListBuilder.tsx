@@ -49,6 +49,7 @@ interface Props {
   initialIsPublic?: boolean;
   initialTiers?: TierDef[];
   initialItems?: TierListItem[];
+  initialRankModes?: boolean;
   signedIn: boolean;
 }
 
@@ -142,6 +143,7 @@ export default function TierListBuilder({
   initialIsPublic = true,
   initialTiers,
   initialItems = [],
+  initialRankModes = false,
   signedIn,
 }: Props) {
   const router = useRouter();
@@ -173,6 +175,8 @@ export default function TierListBuilder({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingTier, setEditingTier] = useState<string | null>(null);
+  const [quickAddTier, setQuickAddTier] = useState<string | null>(null);
+  const [quickAddQuery, setQuickAddQuery] = useState("");
 
   // -- pool filters
   const [poolFilter, setPoolFilter] = useState("");
@@ -182,6 +186,7 @@ export default function TierListBuilder({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [labsOpen, setLabsOpen] = useState(false);
   const [maxAgeMonths, setMaxAgeMonths] = useState<number | null>(6);
+  const [rankModes, setRankModes] = useState(initialRankModes);
   const [licenseFilter, setLicenseFilter] = useState<"all" | "open-weights" | "proprietary">("all");
 
   const ageCutoff = useMemo(() => {
@@ -225,6 +230,7 @@ export default function TierListBuilder({
   const visiblePool = (containers.pool ?? []).filter((id) => {
     const m = modelById.get(id)!;
     if (hidden.has(id)) return false;
+    if (m.variant === "thinking" && !rankModes) return false;
     if (!passesVendorFilter(m)) return false;
     if (licenseFilter !== "all" && m.license !== licenseFilter) return false;
     if (ageCutoff && (m.release_date ?? "") < ageCutoff) return false;
@@ -248,6 +254,29 @@ export default function TierListBuilder({
       if (containers[key].includes(id)) return key;
     }
     return null;
+  }
+
+  function quickAdd(tierKey: string, modelId: string) {
+    setContainers((prev) => ({
+      ...prev,
+      pool: prev.pool.filter((id) => id !== modelId),
+      [tierKey]: [...(prev[tierKey] ?? []), modelId],
+    }));
+    setQuickAddQuery("");
+  }
+
+  /** Unplaced models searchable in quick-add: only variant rules apply. */
+  function quickAddResults(): Model[] {
+    const q = quickAddQuery.trim().toLowerCase();
+    const out: Model[] = [];
+    for (const id of containers.pool ?? []) {
+      const m = modelById.get(id)!;
+      if (m.variant === "thinking" && !rankModes) continue;
+      if (q && !m.name.toLowerCase().includes(q) && !m.vendor.toLowerCase().includes(q)) continue;
+      out.push(m);
+      if (out.length >= 10) break;
+    }
+    return out;
   }
 
   function moveToPool(modelId: string) {
@@ -350,7 +379,7 @@ export default function TierListBuilder({
         position,
       }))
     );
-    const result = await saveTierList({ id: listId, title, description, isPublic, tiers, placements });
+    const result = await saveTierList({ id: listId, title, description, isPublic, tiers, rankModes, placements });
     setSaving(false);
     if (result?.error) setError(result.error);
     else if (result?.slug) router.push(`/t/${result.slug}`);
@@ -441,6 +470,21 @@ export default function TierListBuilder({
                         width="w-36"
                       />
                     ))}
+                    <button
+                      type="button"
+                      aria-label="Quick add a model to this tier"
+                      onClick={() => {
+                        setQuickAddTier(quickAddTier === tier.key ? null : tier.key);
+                        setQuickAddQuery("");
+                      }}
+                      className={`grid h-20 w-10 place-items-center text-xl transition-colors ${
+                        quickAddTier === tier.key
+                          ? "bg-surface-2 text-foreground"
+                          : "text-muted/40 hover:bg-surface-2 hover:text-foreground"
+                      }`}
+                    >
+                      +
+                    </button>
                   </DroppableZone>
                 </SortableContext>
               </div>
@@ -481,6 +525,53 @@ export default function TierListBuilder({
                       className="rounded-sm border border-edge px-2 py-1 text-muted hover:text-foreground">
                       Done
                     </button>
+                  </div>
+                </div>
+              )}
+              {quickAddTier === tier.key && (
+                <div className="space-y-2 border-t border-black/60 bg-surface-2 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={quickAddQuery}
+                      onChange={(e) => setQuickAddQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") setQuickAddTier(null);
+                        if (e.key === "Enter") {
+                          const first = quickAddResults()[0];
+                          if (first) quickAdd(tier.key, first.id);
+                          e.preventDefault();
+                        }
+                      }}
+                      placeholder={`Search to add to ${tier.label}…`}
+                      className="w-64 rounded-sm border border-edge bg-surface px-2.5 py-1.5 text-sm outline-none placeholder:text-muted focus:border-muted"
+                    />
+                    <span className="text-xs text-muted">Enter adds the first match</span>
+                    <button
+                      type="button"
+                      onClick={() => setQuickAddTier(null)}
+                      className="ml-auto rounded-sm border border-edge px-2 py-1 text-sm text-muted hover:text-foreground"
+                    >
+                      Done
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {quickAddResults().map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => quickAdd(tier.key, m.id)}
+                        className="flex items-center gap-1.5 rounded-sm border border-edge bg-surface px-2 py-1 text-xs font-medium text-muted hover:border-muted hover:text-foreground"
+                      >
+                        <span className="flex h-4 w-4 items-center justify-center">
+                          <VendorLogo vendorSlug={m.vendor_slug} className="h-full w-full" />
+                        </span>
+                        {m.name}
+                      </button>
+                    ))}
+                    {quickAddResults().length === 0 && (
+                      <span className="px-1 py-1 text-xs text-muted">No unplaced models match.</span>
+                    )}
                   </div>
                 </div>
               )}
@@ -568,6 +659,30 @@ export default function TierListBuilder({
                         onClick={() => setLicenseFilter(value)}
                         className={`px-3 py-1.5 font-medium transition-colors ${
                           licenseFilter === value
+                            ? "bg-foreground text-black"
+                            : "text-muted hover:text-foreground"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted">Thinking modes</span>
+                  <div className="flex overflow-hidden rounded-sm border border-edge">
+                    {(
+                      [
+                        [false, "Combined"],
+                        [true, "Separate"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setRankModes(value)}
+                        className={`px-3 py-1.5 font-medium transition-colors ${
+                          rankModes === value
                             ? "bg-foreground text-black"
                             : "text-muted hover:text-foreground"
                         }`}

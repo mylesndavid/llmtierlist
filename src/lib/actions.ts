@@ -145,6 +145,7 @@ export interface TierListPayload {
   description: string;
   isPublic: boolean;
   tiers: TierDef[];
+  rankModes?: boolean;
   placements: Array<{ modelId: string; tier: Tier; position: number }>;
 }
 
@@ -189,18 +190,18 @@ export async function saveTierList(payload: TierListPayload) {
     }
     slug = existing[0].slug;
     await d1Query(
-      `update tier_lists set title = ?, description = ?, is_public = ?, tiers = ?,
+      `update tier_lists set title = ?, description = ?, is_public = ?, tiers = ?, rank_modes = ?,
        updated_at = datetime('now') where id = ?`,
-      [title, payload.description.slice(0, 1000), payload.isPublic ? 1 : 0, JSON.stringify(tiers), listId]
+      [title, payload.description.slice(0, 1000), payload.isPublic ? 1 : 0, JSON.stringify(tiers), payload.rankModes ? 1 : 0, listId]
     );
     await d1Query("delete from tier_list_items where tier_list_id = ?", [listId]);
   } else {
     slug = slugId();
     listId = rowId();
     await d1Query(
-      `insert into tier_lists (id, user_id, slug, title, description, is_public, tiers)
-       values (?, ?, ?, ?, ?, ?, ?)`,
-      [listId, user.id, slug, title, payload.description.slice(0, 1000), payload.isPublic ? 1 : 0, JSON.stringify(tiers)]
+      `insert into tier_lists (id, user_id, slug, title, description, is_public, tiers, rank_modes)
+       values (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [listId, user.id, slug, title, payload.description.slice(0, 1000), payload.isPublic ? 1 : 0, JSON.stringify(tiers), payload.rankModes ? 1 : 0]
     );
   }
 

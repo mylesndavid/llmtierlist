@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   getCurrentUser,
+  getModelById,
   getModelBySlug,
   getReviewsForModel,
   getUserVotes,
@@ -22,6 +23,13 @@ export default async function ModelPage({
   const { slug } = await params;
   const model = await getModelBySlug(slug);
   if (!model) notFound();
+
+  // Variants (thinking modes, service tiers) share the base model's page so
+  // votes and reviews don't fragment.
+  if (model.variant && model.base_model_id) {
+    const base = await getModelById(model.base_model_id);
+    if (base) redirect(`/models/${base.slug}`);
+  }
 
   const [reviews, userVotes, user] = await Promise.all([
     getReviewsForModel(model.id),

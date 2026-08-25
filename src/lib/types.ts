@@ -52,6 +52,8 @@ export interface Model {
   license: "proprietary" | "open-weights";
   release_date: string | null;
   context_window: number | null;
+  base_model_id: string | null;
+  variant: "thinking" | "service" | null;
 }
 
 export interface ModelStats {
@@ -93,6 +95,7 @@ export interface TierList {
   description: string;
   is_public: boolean;
   tiers: TierDef[];
+  rank_modes: boolean;
   created_at: string;
   updated_at: string;
   profiles?: Profile;

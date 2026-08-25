@@ -1,4 +1,4 @@
-import { getCurrentUser, getModelsWithStats, getUserVotes } from "@/lib/data";
+import { getCurrentUser, getBaseModelsWithStats, getUserVotes } from "@/lib/data";
 import ModelDirectory from "@/components/ModelDirectory";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +7,7 @@ export const metadata = { title: "Models" };
 
 export default async function ModelsPage() {
   const [models, userVotes, user] = await Promise.all([
-    getModelsWithStats(),
+    getBaseModelsWithStats(),
     getUserVotes(),
     getCurrentUser(),
   ]);

@@ -196,6 +196,11 @@ export default async function OpengraphImage({
               by {author}
             </div>
           )}
+          {list?.rank_modes && (
+            <div style={{ display: "flex", color: "#6a6a6a", fontSize: 18, marginLeft: 16 }}>
+              · thinking modes
+            </div>
+          )}
           <div
             style={{
               display: "flex",

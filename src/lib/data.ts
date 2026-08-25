@@ -44,7 +44,7 @@ function withStats(row: ModelRow): ModelWithStats {
 
 const MODEL_SELECT = `
   select m.id, m.slug, m.name, m.vendor, m.vendor_slug, m.description, m.license,
-         m.release_date, m.context_window,
+         m.release_date, m.context_window, m.base_model_id, m.variant,
          s.upvotes, s.downvotes, s.net_score, s.review_count, s.avg_rating,
          s.placement_count, s.avg_tier_value
   from models m left join model_stats s on s.model_id = m.id`;
@@ -57,16 +57,29 @@ export function bustModelsCache() {
   modelsCache = null;
 }
 
+/** All models except service-tier duplicates (:free/:batch). Includes thinking variants. */
 export async function getModelsWithStats(): Promise<ModelWithStats[]> {
   if (modelsCache && Date.now() - modelsCache.ts < 30_000) return modelsCache.data;
-  const rows = await d1Query<ModelRow>(`${MODEL_SELECT} order by m.name`);
+  const rows = await d1Query<ModelRow>(
+    `${MODEL_SELECT} where coalesce(m.variant, '') != 'service' order by m.name`
+  );
   const data = rows.map(withStats);
   modelsCache = { data, ts: Date.now() };
   return data;
 }
 
+/** Base models only — for the leaderboard, directory, and community tiers. */
+export async function getBaseModelsWithStats(): Promise<ModelWithStats[]> {
+  return (await getModelsWithStats()).filter((m) => !m.variant);
+}
+
 export async function getModelBySlug(slug: string): Promise<ModelWithStats | null> {
   const rows = await d1Query<ModelRow>(`${MODEL_SELECT} where m.slug = ?`, [slug]);
+  return rows.length ? withStats(rows[0]) : null;
+}
+
+export async function getModelById(id: string): Promise<ModelWithStats | null> {
+  const rows = await d1Query<ModelRow>(`${MODEL_SELECT} where m.id = ?`, [id]);
   return rows.length ? withStats(rows[0]) : null;
 }
 
@@ -98,8 +111,9 @@ export async function getCurrentUser() {
   return getSessionUser();
 }
 
-type TierListRow = Omit<TierList, "is_public" | "profiles" | "tiers"> & {
+type TierListRow = Omit<TierList, "is_public" | "profiles" | "tiers" | "rank_modes"> & {
   is_public: number;
+  rank_modes: number;
   tiers: string | null;
   username?: string;
   display_name?: string | null;
@@ -120,6 +134,7 @@ function toTierList(row: TierListRow): TierList {
   return {
     ...rest,
     is_public: !!row.is_public,
+    rank_modes: !!row.rank_modes,
     tiers: parseTiers(row.tiers),
     profiles: username
       ? { username, display_name: display_name ?? null, avatar_url: avatar_url ?? null }
@@ -173,14 +188,17 @@ export type BrowseTierList = TierList & {
   tier_previews: Record<string, string[]>;
 };
 
-export async function getPublicTierLists(limit = 30): Promise<BrowseTierList[]> {
+export async function getPublicTierLists(limit = 30, query = ""): Promise<BrowseTierList[]> {
+  const q = query.trim().slice(0, 80);
+  const like = `%${q.replaceAll("%", "").replaceAll("_", "\\_")}%`;
   const rows = await d1Query<TierListRow & { score: number | null }>(
     `select tl.*, u.username, u.display_name, u.avatar_url,
        (select sum(value) from list_votes lv where lv.tier_list_id = tl.id) as score
      from tier_lists tl join users u on u.id = tl.user_id
      where tl.is_public = 1
+       ${q ? "and (tl.title like ? or tl.description like ? or u.username like ? or u.display_name like ?)" : ""}
      order by coalesce(score, 0) desc, tl.updated_at desc limit ?`,
-    [limit]
+    q ? [like, like, like, like, limit] : [limit]
   );
   const lists = rows.map((r) => ({ ...toTierList(r), score: r.score ?? 0 }));
   if (lists.length === 0) return [];

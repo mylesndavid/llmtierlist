@@ -6,8 +6,13 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Tier Lists" };
 
-export default async function TierListsPage() {
-  const lists = await getPublicTierLists();
+export default async function TierListsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q = "" } = await searchParams;
+  const lists = await getPublicTierLists(30, q);
 
   return (
     <div className="space-y-6">
@@ -15,7 +20,7 @@ export default async function TierListsPage() {
         <div>
           <h1 className="text-2xl font-bold">Community tier lists</h1>
           <p className="mt-1 text-sm text-muted">
-            Recently published rankings from the community.
+            Top-voted and recent rankings from the community.
           </p>
         </div>
         <Link
@@ -26,12 +31,41 @@ export default async function TierListsPage() {
         </Link>
       </div>
 
+      <form action="/tierlists" method="get" className="flex gap-2">
+        <input
+          name="q"
+          defaultValue={q}
+          placeholder="Search tier lists by title, description, or author…"
+          className="w-full max-w-md rounded-sm border border-edge bg-surface px-3 py-2 text-sm outline-none placeholder:text-muted focus:border-muted"
+        />
+        <button
+          type="submit"
+          className="rounded-sm border border-edge bg-surface px-4 py-2 text-sm hover:bg-surface-2"
+        >
+          Search
+        </button>
+        {q && (
+          <Link
+            href="/tierlists"
+            className="self-center text-sm text-muted underline hover:text-foreground"
+          >
+            Clear
+          </Link>
+        )}
+      </form>
+
       {lists.length === 0 ? (
         <p className="py-16 text-center text-muted">
-          No public tier lists yet.{" "}
-          <Link href="/tierlists/new" className="underline hover:text-foreground">
-            Be the first to publish one.
-          </Link>
+          {q ? (
+            <>No tier lists match “{q}”.</>
+          ) : (
+            <>
+              No public tier lists yet.{" "}
+              <Link href="/tierlists/new" className="underline hover:text-foreground">
+                Be the first to publish one.
+              </Link>
+            </>
+          )}
         </p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
