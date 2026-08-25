@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "llmtierlist",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://llmtierlist.devvcore.workers.dev"
+  },
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "llmtierlist",
+      "database_id": "b192c00a-868c-4155-8675-e7a52558a987"
+    }
+  ]
+}

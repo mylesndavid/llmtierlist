@@ -1,0 +1,3 @@
+-- The model catalog is synced from OpenRouter, not seeded:
+--   npm run sync:models
+-- (requires SUPABASE_SERVICE_ROLE_KEY in .env.local; see README)

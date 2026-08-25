@@ -1,0 +1,102 @@
+-- llmtierlist.com D1 (SQLite) schema
+-- Auth is WorkOS; users.id is the WorkOS user id. Authorization is enforced in
+-- the app layer (D1 has no RLS).
+
+create table if not exists users (
+  id text primary key,
+  email text not null,
+  username text not null unique,
+  display_name text,
+  avatar_url text,
+  created_at text not null default (datetime('now'))
+);
+
+create table if not exists models (
+  id text primary key,              -- OpenRouter id, e.g. "anthropic/claude-opus-4.5"
+  slug text not null unique,
+  name text not null,
+  vendor text not null,
+  vendor_slug text not null default '',
+  description text not null default '',
+  license text not null default 'proprietary' check (license in ('proprietary', 'open-weights')),
+  release_date text,
+  context_window integer,
+  created_at text not null default (datetime('now'))
+);
+create index if not exists models_vendor_slug_idx on models (vendor_slug);
+
+create table if not exists votes (
+  user_id text not null references users (id) on delete cascade,
+  model_id text not null references models (id) on delete cascade,
+  value integer not null check (value in (-1, 1)),
+  created_at text not null default (datetime('now')),
+  primary key (user_id, model_id)
+);
+create index if not exists votes_model_id_idx on votes (model_id);
+
+create table if not exists reviews (
+  id text primary key,
+  user_id text not null references users (id) on delete cascade,
+  model_id text not null references models (id) on delete cascade,
+  rating integer not null check (rating between 1 and 5),
+  title text not null default '',
+  body text not null check (length(body) between 1 and 5000),
+  created_at text not null default (datetime('now')),
+  updated_at text not null default (datetime('now')),
+  unique (user_id, model_id)
+);
+create index if not exists reviews_model_id_idx on reviews (model_id);
+
+create table if not exists tier_lists (
+  id text primary key,
+  user_id text not null references users (id) on delete cascade,
+  slug text not null unique,
+  title text not null check (length(title) between 1 and 120),
+  description text not null default '',
+  is_public integer not null default 1,
+  created_at text not null default (datetime('now')),
+  updated_at text not null default (datetime('now'))
+);
+create index if not exists tier_lists_user_id_idx on tier_lists (user_id);
+
+create table if not exists tier_list_items (
+  tier_list_id text not null references tier_lists (id) on delete cascade,
+  model_id text not null references models (id) on delete cascade,
+  tier text not null check (tier in ('S', 'A', 'B', 'C', 'D', 'F')),
+  position integer not null default 0,
+  primary key (tier_list_id, model_id)
+);
+create index if not exists tier_list_items_model_id_idx on tier_list_items (model_id);
+
+drop view if exists model_stats;
+create view model_stats as
+select
+  m.id as model_id,
+  coalesce(v.upvotes, 0) as upvotes,
+  coalesce(v.downvotes, 0) as downvotes,
+  coalesce(v.net_score, 0) as net_score,
+  coalesce(r.review_count, 0) as review_count,
+  r.avg_rating as avg_rating,
+  t.placement_count as placement_count,
+  t.avg_tier_value as avg_tier_value
+from models m
+left join (
+  select model_id,
+    sum(case when value = 1 then 1 else 0 end) as upvotes,
+    sum(case when value = -1 then 1 else 0 end) as downvotes,
+    sum(value) as net_score
+  from votes group by model_id
+) v on v.model_id = m.id
+left join (
+  select model_id, count(*) as review_count, avg(rating) as avg_rating
+  from reviews group by model_id
+) r on r.model_id = m.id
+left join (
+  select i.model_id,
+    count(*) as placement_count,
+    avg(case i.tier when 'S' then 5 when 'A' then 4 when 'B' then 3
+                    when 'C' then 2 when 'D' then 1 else 0 end) as avg_tier_value
+  from tier_list_items i
+  join tier_lists tl on tl.id = i.tier_list_id and tl.is_public = 1
+  group by i.model_id
+) t on t.model_id = m.id;
