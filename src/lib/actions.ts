@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { customAlphabet } from "nanoid";
 import { d1Query } from "./d1";
 import { bustModelsCache } from "./data";
+import { generateAndStoreOg } from "./og";
 import { createSession, destroySession, getSessionUser } from "./auth";
 import { type Tier, type TierDef } from "./types";
 
@@ -215,6 +216,16 @@ export async function saveTierList(payload: TierListPayload) {
         .join(", ")}`,
       batch.flatMap((p) => [listId!, p.modelId, p.tier, tierIndexByKey.get(p.tier)!, p.position])
     );
+  }
+
+  // Pre-render the share image so crawlers (X, Slack, iMessage) get it
+  // instantly instead of timing out on a cold render.
+  if (payload.isPublic) {
+    try {
+      await generateAndStoreOg(listId!, slug);
+    } catch (err) {
+      console.error("OG pre-render failed:", err);
+    }
   }
 
   bustModelsCache();

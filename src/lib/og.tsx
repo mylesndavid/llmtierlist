@@ -1,15 +1,13 @@
 import { ImageResponse } from "next/og";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { getModelsWithStats, getTierListBySlug } from "@/lib/data";
-import { DEFAULT_TIERS, type Model } from "@/lib/types";
+import { d1Query } from "./d1";
+import { getTierListBySlug } from "./data";
+import type { Model, TierDef } from "./types";
 
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
-export const alt = "Tier list";
-
+const SIZE = { width: 1200, height: 630 };
 const MAX_PER_ROW = 6;
 
-// vendor_slug -> SVG data URI, cached per isolate so repeat renders skip fetches
+// vendor_slug -> SVG data URI, cached per isolate
 const logoCache = new Map<string, string>();
 
 async function logoDataUri(slug: string): Promise<string | null> {
@@ -38,40 +36,43 @@ async function logoDataUri(slug: string): Promise<string | null> {
   }
 }
 
-export default async function OpengraphImage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const [list, models] = await Promise.all([
-    getTierListBySlug(slug),
-    getModelsWithStats(),
-  ]);
+type OgModel = Pick<Model, "id" | "name" | "vendor_slug">;
 
-  const tiers = list?.tiers ?? DEFAULT_TIERS;
+/** Render a tier list's OG/share image and return the PNG bytes. */
+export async function renderListOgPng(slug: string): Promise<Uint8Array | null> {
+  const list = await getTierListBySlug(slug);
+  if (!list || !list.is_public) return null;
+
+  const tiers: TierDef[] = list.tiers;
+  const ids = list.items.map((i) => i.model_id);
+  const models: OgModel[] = [];
+  for (let i = 0; i < ids.length; i += 90) {
+    const chunk = ids.slice(i, i + 90);
+    models.push(
+      ...(await d1Query<OgModel>(
+        `select id, name, vendor_slug from models where id in (${chunk.map(() => "?").join(",")})`,
+        chunk
+      ))
+    );
+  }
   const modelById = new Map(models.map((m) => [m.id, m]));
-  const placements = new Map<string, Model[]>(tiers.map((t) => [t.key, []]));
-  if (list) {
-    for (const item of list.items) {
-      const m = modelById.get(item.model_id);
-      if (m) placements.get(item.tier)?.push(m);
-    }
+  const placements = new Map<string, OgModel[]>(tiers.map((t) => [t.key, []]));
+  for (const item of list.items) {
+    const m = modelById.get(item.model_id);
+    if (m) placements.get(item.tier)?.push(m);
   }
 
-  const title = list?.title ?? "LLM Tier List";
-  const author = list?.profiles?.display_name || list?.profiles?.username;
-
-  // resolve logos for every tile we'll draw (deduped by vendor)
-  const shownModels = tiers.flatMap((t) => (placements.get(t.key) ?? []).slice(0, MAX_PER_ROW));
+  const shown = tiers.flatMap((t) => (placements.get(t.key) ?? []).slice(0, MAX_PER_ROW));
   const logoBySlug = new Map<string, string | null>();
   await Promise.all(
-    [...new Set(shownModels.map((m) => m.vendor_slug))].map(async (vs) => {
+    [...new Set(shown.map((m) => m.vendor_slug))].map(async (vs) => {
       logoBySlug.set(vs, await logoDataUri(vs));
     })
   );
 
-  return new ImageResponse(
+  const author = list.profiles?.display_name || list.profiles?.username;
+
+  const image = new ImageResponse(
     (
       <div
         style={{
@@ -83,21 +84,13 @@ export default async function OpengraphImage({
           fontFamily: "sans-serif",
         }}
       >
-        {/* tier rows */}
         <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
           {tiers.map((tier) => {
             const rowModels = placements.get(tier.key) ?? [];
-            const shown = rowModels.slice(0, MAX_PER_ROW);
-            const overflow = rowModels.length - shown.length;
+            const rowShown = rowModels.slice(0, MAX_PER_ROW);
+            const overflow = rowModels.length - rowShown.length;
             return (
-              <div
-                key={tier.key}
-                style={{
-                  display: "flex",
-                  flexGrow: 1,
-                  borderBottom: "2px solid #000",
-                }}
-              >
+              <div key={tier.key} style={{ display: "flex", flexGrow: 1, borderBottom: "2px solid #000" }}>
                 <div
                   style={{
                     display: "flex",
@@ -114,15 +107,8 @@ export default async function OpengraphImage({
                 >
                   {tier.label.length > 12 ? `${tier.label.slice(0, 11)}…` : tier.label}
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "stretch",
-                    flexGrow: 1,
-                    backgroundColor: "#1a1a1a",
-                  }}
-                >
-                  {shown.map((m) => {
+                <div style={{ display: "flex", alignItems: "stretch", flexGrow: 1, backgroundColor: "#1a1a1a" }}>
+                  {rowShown.map((m) => {
                     const logo = logoBySlug.get(m.vendor_slug);
                     return (
                       <div
@@ -152,16 +138,7 @@ export default async function OpengraphImage({
                     );
                   })}
                   {overflow > 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#9a9a9a",
-                        fontSize: 20,
-                        fontWeight: 600,
-                        paddingLeft: 10,
-                      }}
-                    >
+                    <div style={{ display: "flex", alignItems: "center", color: "#9a9a9a", fontSize: 20, fontWeight: 600, paddingLeft: 10 }}>
                       +{overflow}
                     </div>
                   )}
@@ -170,51 +147,52 @@ export default async function OpengraphImage({
             );
           })}
         </div>
-        {/* gray name bar */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            height: 84,
-            backgroundColor: "#2e2e2e",
-            padding: "0 32px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              color: "#f2f2f2",
-              fontSize: 34,
-              fontWeight: 700,
-              overflow: "hidden",
-            }}
-          >
-            {title.length > 44 ? `${title.slice(0, 43)}…` : title}
+        <div style={{ display: "flex", alignItems: "center", height: 84, backgroundColor: "#2e2e2e", padding: "0 32px" }}>
+          <div style={{ display: "flex", color: "#f2f2f2", fontSize: 34, fontWeight: 700, overflow: "hidden" }}>
+            {list.title.length > 44 ? `${list.title.slice(0, 43)}…` : list.title}
           </div>
           {author && (
             <div style={{ display: "flex", color: "#9a9a9a", fontSize: 22, marginLeft: 16 }}>
               by {author}
             </div>
           )}
-          {list?.rank_modes && (
+          {list.rank_modes && (
             <div style={{ display: "flex", color: "#6a6a6a", fontSize: 18, marginLeft: 16 }}>
               · thinking modes
             </div>
           )}
-          <div
-            style={{
-              display: "flex",
-              marginLeft: "auto",
-              color: "#9a9a9a",
-              fontSize: 22,
-              fontWeight: 600,
-            }}
-          >
+          <div style={{ display: "flex", marginLeft: "auto", color: "#9a9a9a", fontSize: 22, fontWeight: 600 }}>
             llmtierlist.com
           </div>
         </div>
       </div>
     ),
-    size
+    SIZE
   );
+  return new Uint8Array(await image.arrayBuffer());
+}
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+export function fromBase64(b64: string): Uint8Array {
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+/** Render and persist a list's OG image so crawlers get it instantly. */
+export async function generateAndStoreOg(listId: string, slug: string): Promise<Uint8Array | null> {
+  const png = await renderListOgPng(slug);
+  if (!png) return null;
+  await d1Query(
+    `insert into og_cache (tier_list_id, png, updated_at) values (?, ?, datetime('now'))
+     on conflict (tier_list_id) do update set png = excluded.png, updated_at = datetime('now')`,
+    [listId, toBase64(png)]
+  );
+  return png;
 }

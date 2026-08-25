@@ -20,10 +20,24 @@ export async function generateMetadata({
   const list = await getTierListBySlug(slug);
   if (!list) return { title: "Tier list not found" };
   const author = list.profiles?.display_name || list.profiles?.username;
+  const description =
+    list.description || `An LLM tier list${author ? ` by ${author}` : ""} on llmtierlist.com`;
+  const image = {
+    url: `/t/${slug}/og.png`,
+    width: 1200,
+    height: 630,
+    alt: "Tier list",
+  };
   return {
     title: list.title,
-    description:
-      list.description || `An LLM tier list${author ? ` by ${author}` : ""} on llmtierlist.com`,
+    description,
+    openGraph: { title: list.title, description, images: [image] },
+    twitter: {
+      card: "summary_large_image",
+      title: list.title,
+      description,
+      images: [image],
+    },
   };
 }
 

@@ -116,3 +116,9 @@ create table if not exists list_votes (
   primary key (user_id, tier_list_id)
 );
 create index if not exists list_votes_list_idx on list_votes (tier_list_id);
+
+create table if not exists og_cache (
+  tier_list_id text primary key references tier_lists (id) on delete cascade,
+  png text not null,                -- base64 of the pre-rendered OG image
+  updated_at text not null default (datetime('now'))
+);
