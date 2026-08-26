@@ -199,6 +199,25 @@ console.log(
   `${rows.filter((r) => r.variant === "thinking").length} thinking variants (${synthetic} synthesized).`
 );
 
+// A model can be retired upstream while a new entry claims its slug (e.g. a
+// real ":thinking" SKU dropped and our synthetic one takes over). Free those
+// slugs first — renaming rather than deleting, so votes/reviews/placements on
+// the retired model survive.
+const wantedSlugs = new Map(rows.map((r) => [r.slug, r.id]));
+const existing = (await d1("select id, slug from models")).result[0].results;
+const takenSlugs = new Set(existing.map((r) => r.slug));
+for (const row of existing) {
+  const claimant = wantedSlugs.get(row.slug);
+  if (!claimant || claimant === row.id) continue;
+  let freed = `${row.slug}-retired`;
+  for (let i = 2; takenSlugs.has(freed) || wantedSlugs.has(freed); i++) {
+    freed = `${row.slug}-retired-${i}`;
+  }
+  takenSlugs.add(freed);
+  await d1("update models set slug = ? where id = ?", [freed, row.id]);
+  console.log(`Freed slug "${row.slug}" from retired ${row.id} -> ${freed}`);
+}
+
 // 11 params per row, D1 caps at 100 params per query -> 9 rows per batch
 const BATCH = 9;
 for (let i = 0; i < rows.length; i += BATCH) {
