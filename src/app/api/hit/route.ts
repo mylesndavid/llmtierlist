@@ -1,4 +1,5 @@
 import { d1Query } from "@/lib/d1";
+import { checkActionRateLimit } from "@/lib/anon";
 
 const BOT_RE = /bot|crawl|spider|slurp|preview|externalhit|scrape|curl|wget|python|headless/i;
 
@@ -22,6 +23,11 @@ export async function POST(request: Request) {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
+  // one visitor row per browser per day; cap writes so the beacon can't be
+  // used to bloat the table
+  if (!(await checkActionRateLimit(`hit:${visitor}`, 200))) {
+    return new Response(null, { status: 204 });
+  }
   await d1Query(
     `insert into visits (day, visitor) values (?, ?)
      on conflict (day, visitor) do update set views = views + 1`,

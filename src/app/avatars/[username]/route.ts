@@ -19,6 +19,8 @@ export async function GET(
     headers: {
       "Content-Type": "image/jpeg",
       "Cache-Control": "public, max-age=300",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
     },
   });
 }

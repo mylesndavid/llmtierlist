@@ -7,10 +7,16 @@ import { d1Query } from "./d1";
 import { bustModelsCache } from "./data";
 import { generateAndStoreOg } from "./og";
 import { createSession, destroySession, getSessionUser } from "./auth";
-import { checkVoteRateLimit, claimAnonVotes, getAnonId } from "./anon";
+import { checkActionRateLimit, checkVoteRateLimit, claimAnonVotes, getAnonId } from "./anon";
 import { type Tier, type TierDef } from "./types";
 
 const slugId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 10);
+
+/** Only same-origin absolute paths — blocks //evil.com and \evil.com. */
+function safeNext(next: string, fallback: string): string {
+  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return fallback;
+  return next;
+}
 const rowId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 16);
 
 async function requireUser() {
@@ -82,7 +88,7 @@ export async function updateProfile(formData: FormData) {
 
   revalidatePath("/", "layout");
   // Land on the new profile unless onboarding was interrupted mid-task.
-  redirect(next && next !== "/" && next.startsWith("/") ? next : `/u/${username}`);
+  redirect(next && next !== "/" ? safeNext(next, `/u/${username}`) : `/u/${username}`);
 }
 
 // ============ votes ============
@@ -146,6 +152,9 @@ export async function upsertReview(formData: FormData) {
   if (!modelId || !body || !(rating >= 1 && rating <= 5)) {
     return { error: "Please add a rating and review text." };
   }
+  if (!(await checkActionRateLimit(`review:${user.id}`, 30))) {
+    return { error: "You've written a lot of reviews today — try again tomorrow." };
+  }
 
   await d1Query(
     `insert into reviews (id, user_id, model_id, rating, title, body)
@@ -204,9 +213,14 @@ export async function saveTierList(payload: TierListPayload) {
   }
   const tierIndexByKey = new Map(tiers.map((t, i) => [t.key, i]));
 
-  const placements = payload.placements.filter((p) => tierIndexByKey.has(p.tier));
+  const placements = payload.placements
+    .filter((p) => tierIndexByKey.has(p.tier))
+    .slice(0, 300);
   if (placements.length === 0) {
     return { error: "Place at least one model in a tier." };
+  }
+  if (!(await checkActionRateLimit(`list:${user.id}`, 60))) {
+    return { error: "You've saved a lot of tier lists today — try again tomorrow." };
   }
 
   let listId = payload.id ?? null;

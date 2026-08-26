@@ -68,6 +68,23 @@ export async function checkVoteRateLimit(anonId: string): Promise<boolean> {
   return true;
 }
 
+/** Generic per-day cap for a named actor (reviews, list saves, beacons). */
+export async function checkActionRateLimit(key: string, limit: number): Promise<boolean> {
+  const day = new Date().toISOString().slice(0, 10);
+  const rows = await d1Query<{ count: number }>(
+    `insert into rate_limits (bucket, day, count) values (?, ?, 1)
+     on conflict (bucket, day) do update set count = count + 1
+     returning count`,
+    [key, day]
+  );
+  return (rows[0]?.count ?? 0) <= limit;
+}
+
+/** Hashed client IP for the current request, salted per day. */
+export async function requestIpHash(): Promise<string> {
+  return ipHash();
+}
+
 /**
  * Adopt a browser's anonymous votes into a freshly signed-in account.
  * The account's own votes win any conflict.
