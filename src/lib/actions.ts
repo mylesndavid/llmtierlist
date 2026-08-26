@@ -99,39 +99,53 @@ export async function updateProfile(formData: FormData) {
  * IP, and adopted into their account if they sign up later.
  */
 export async function castVote(modelId: string, value: 1 | -1 | 0) {
+  // Client-supplied: types are not runtime guarantees.
+  if (typeof modelId !== "string" || !modelId || modelId.length > 200) {
+    return { error: "Unknown model." };
+  }
+  const v = Number(value);
+  if (v !== 1 && v !== -1 && v !== 0) return { error: "Invalid vote." };
+  value = v as 1 | -1 | 0;
+
   const user = await getSessionUser();
 
-  if (user?.onboarded) {
-    if (value === 0) {
-      await d1Query("delete from votes where user_id = ? and model_id = ?", [
-        user.id,
-        modelId,
-      ]);
+  try {
+    if (user?.onboarded) {
+      if (value === 0) {
+        await d1Query("delete from votes where user_id = ? and model_id = ?", [
+          user.id,
+          modelId,
+        ]);
+      } else {
+        await d1Query(
+          `insert into votes (user_id, model_id, value) values (?, ?, ?)
+           on conflict (user_id, model_id) do update set value = excluded.value`,
+          [user.id, modelId, value]
+        );
+      }
     } else {
-      await d1Query(
-        `insert into votes (user_id, model_id, value) values (?, ?, ?)
-         on conflict (user_id, model_id) do update set value = excluded.value`,
-        [user.id, modelId, value]
-      );
+      const anonId = await getAnonId();
+      if (!anonId) return { error: "Couldn't record that vote." };
+      if (!(await checkVoteRateLimit(anonId))) {
+        return { error: "That's a lot of voting for one day — try again tomorrow." };
+      }
+      if (value === 0) {
+        await d1Query("delete from anon_votes where anon_id = ? and model_id = ?", [
+          anonId,
+          modelId,
+        ]);
+      } else {
+        await d1Query(
+          `insert into anon_votes (anon_id, model_id, value) values (?, ?, ?)
+           on conflict (anon_id, model_id) do update set value = excluded.value`,
+          [anonId, modelId, value]
+        );
+      }
     }
-  } else {
-    const anonId = await getAnonId();
-    if (!anonId) return { error: "Couldn't record that vote." };
-    if (!(await checkVoteRateLimit(anonId))) {
-      return { error: "That's a lot of voting for one day — try again tomorrow." };
-    }
-    if (value === 0) {
-      await d1Query("delete from anon_votes where anon_id = ? and model_id = ?", [
-        anonId,
-        modelId,
-      ]);
-    } else {
-      await d1Query(
-        `insert into anon_votes (anon_id, model_id, value) values (?, ?, ?)
-         on conflict (anon_id, model_id) do update set value = excluded.value`,
-        [anonId, modelId, value]
-      );
-    }
+
+  } catch (err) {
+    console.error("Vote failed:", err);
+    return { error: "Couldn't record that vote." };
   }
 
   bustModelsCache();
@@ -281,39 +295,52 @@ export async function saveTierList(payload: TierListPayload) {
 }
 
 export async function castListVote(tierListId: string, value: 1 | -1 | 0) {
+  if (typeof tierListId !== "string" || !tierListId || tierListId.length > 200) {
+    return { error: "Unknown tier list." };
+  }
+  const v = Number(value);
+  if (v !== 1 && v !== -1 && v !== 0) return { error: "Invalid vote." };
+  value = v as 1 | -1 | 0;
+
   const user = await getSessionUser();
 
-  if (user?.onboarded) {
-    if (value === 0) {
-      await d1Query("delete from list_votes where user_id = ? and tier_list_id = ?", [
-        user.id,
-        tierListId,
-      ]);
+  try {
+    if (user?.onboarded) {
+      if (value === 0) {
+        await d1Query("delete from list_votes where user_id = ? and tier_list_id = ?", [
+          user.id,
+          tierListId,
+        ]);
+      } else {
+        await d1Query(
+          `insert into list_votes (user_id, tier_list_id, value) values (?, ?, ?)
+           on conflict (user_id, tier_list_id) do update set value = excluded.value`,
+          [user.id, tierListId, value]
+        );
+      }
     } else {
-      await d1Query(
-        `insert into list_votes (user_id, tier_list_id, value) values (?, ?, ?)
-         on conflict (user_id, tier_list_id) do update set value = excluded.value`,
-        [user.id, tierListId, value]
-      );
+      const anonId = await getAnonId();
+      if (!anonId) return { error: "Couldn't record that vote." };
+      if (!(await checkVoteRateLimit(anonId))) {
+        return { error: "That's a lot of voting for one day — try again tomorrow." };
+      }
+      if (value === 0) {
+        await d1Query("delete from anon_list_votes where anon_id = ? and tier_list_id = ?", [
+          anonId,
+          tierListId,
+        ]);
+      } else {
+        await d1Query(
+          `insert into anon_list_votes (anon_id, tier_list_id, value) values (?, ?, ?)
+           on conflict (anon_id, tier_list_id) do update set value = excluded.value`,
+          [anonId, tierListId, value]
+        );
+      }
     }
-  } else {
-    const anonId = await getAnonId();
-    if (!anonId) return { error: "Couldn't record that vote." };
-    if (!(await checkVoteRateLimit(anonId))) {
-      return { error: "That's a lot of voting for one day — try again tomorrow." };
-    }
-    if (value === 0) {
-      await d1Query("delete from anon_list_votes where anon_id = ? and tier_list_id = ?", [
-        anonId,
-        tierListId,
-      ]);
-    } else {
-      await d1Query(
-        `insert into anon_list_votes (anon_id, tier_list_id, value) values (?, ?, ?)
-         on conflict (anon_id, tier_list_id) do update set value = excluded.value`,
-        [anonId, tierListId, value]
-      );
-    }
+
+  } catch (err) {
+    console.error("Vote failed:", err);
+    return { error: "Couldn't record that vote." };
   }
 
   revalidatePath("/tierlists");
