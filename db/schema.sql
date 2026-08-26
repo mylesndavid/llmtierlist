@@ -137,3 +137,64 @@ create table if not exists visits (
   views integer not null default 1,
   primary key (day, visitor)
 );
+create table if not exists anon_votes (
+  anon_id text not null,
+  model_id text not null references models (id) on delete cascade,
+  value integer not null check (value in (-1, 1)),
+  created_at text not null default (datetime('now')),
+  primary key (anon_id, model_id)
+);
+create index if not exists anon_votes_model_idx on anon_votes (model_id);
+
+create table if not exists anon_list_votes (
+  anon_id text not null,
+  tier_list_id text not null references tier_lists (id) on delete cascade,
+  value integer not null check (value in (-1, 1)),
+  created_at text not null default (datetime('now')),
+  primary key (anon_id, tier_list_id)
+);
+create index if not exists anon_list_votes_list_idx on anon_list_votes (tier_list_id);
+
+create table if not exists rate_limits (
+  bucket text not null,
+  day text not null,
+  count integer not null default 0,
+  primary key (bucket, day)
+);
+
+drop view if exists model_stats;
+create view model_stats as
+select
+  m.id as model_id,
+  coalesce(v.upvotes, 0) as upvotes,
+  coalesce(v.downvotes, 0) as downvotes,
+  coalesce(v.net_score, 0) as net_score,
+  coalesce(r.review_count, 0) as review_count,
+  r.avg_rating as avg_rating,
+  t.placement_count as placement_count,
+  t.avg_tier_value as avg_tier_value
+from models m
+left join (
+  select model_id,
+    sum(case when value = 1 then 1 else 0 end) as upvotes,
+    sum(case when value = -1 then 1 else 0 end) as downvotes,
+    sum(value) as net_score
+  from (
+    select model_id, value from votes
+    union all
+    select model_id, value from anon_votes
+  )
+  group by model_id
+) v on v.model_id = m.id
+left join (
+  select model_id, count(*) as review_count, avg(rating) as avg_rating
+  from reviews group by model_id
+) r on r.model_id = m.id
+left join (
+  select i.model_id,
+    count(*) as placement_count,
+    avg(case when i.tier_index >= 5 then 0 else 5 - i.tier_index end) as avg_tier_value
+  from tier_list_items i
+  join tier_lists tl on tl.id = i.tier_list_id and tl.is_public = 1
+  group by i.model_id
+) t on t.model_id = m.id;

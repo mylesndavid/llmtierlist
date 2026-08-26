@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { castListVote, castVote } from "@/lib/actions";
 
@@ -8,7 +8,7 @@ interface Props {
   modelId: string;
   netScore: number;
   userVote: number; // 1, -1, or 0
-  signedIn: boolean;
+  signedIn?: boolean;
   size?: "sm" | "lg";
   kind?: "model" | "list";
 }
@@ -48,24 +48,27 @@ function ArrowDown({ size, filled }: { size: number; filled: boolean }) {
 }
 
 /** Reddit-style vote capsule: [↑ count ↓], fills with color once voted. */
-export default function VoteButtons({ modelId, netScore, userVote, signedIn, size = "sm", kind = "model" }: Props) {
+export default function VoteButtons({ modelId, netScore, userVote, size = "sm", kind = "model" }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const [optimistic, setOptimistic] = useOptimistic({ netScore, userVote });
 
   function vote(value: 1 | -1) {
-    if (!signedIn) {
-      router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
-      return;
-    }
     const next = optimistic.userVote === value ? 0 : value;
     startTransition(async () => {
       setOptimistic({
         netScore: optimistic.netScore - optimistic.userVote + next,
         userVote: next,
       });
-      if (kind === "list") await castListVote(modelId, next as 1 | -1 | 0);
-      else await castVote(modelId, next as 1 | -1 | 0);
+      const result =
+        kind === "list"
+          ? await castListVote(modelId, next as 1 | -1 | 0)
+          : await castVote(modelId, next as 1 | -1 | 0);
+      if (result?.error) {
+        setError(result.error);
+        router.refresh(); // drop the optimistic state
+      }
     });
   }
 
@@ -82,10 +85,11 @@ export default function VoteButtons({ modelId, netScore, userVote, signedIn, siz
 
   return (
     <div
-      className={`flex shrink-0 select-none items-center overflow-hidden rounded-full transition-colors ${pill} ${
+      className={`relative flex shrink-0 select-none items-center overflow-hidden rounded-full transition-colors ${pill} ${
         lg ? "h-10" : "h-9"
       }`}
       onClick={(e) => e.preventDefault()}
+      title={error ?? undefined}
     >
       <button
         type="button"

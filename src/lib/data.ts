@@ -1,5 +1,6 @@
 import { d1Query } from "./d1";
 import { getSessionUser } from "./auth";
+import { getAnonId } from "./anon";
 import {
   DEFAULT_TIERS,
   type Model,
@@ -96,14 +97,22 @@ export async function getReviewsForModel(modelId: string): Promise<Review[]> {
   }));
 }
 
-/** The signed-in user's votes, as a map of model_id -> 1 | -1. */
+/** The current voter's votes (account or anonymous browser), model_id -> 1 | -1. */
 export async function getUserVotes(): Promise<Record<string, number>> {
   const user = await getSessionUser();
-  if (!user) return {};
-  const rows = await d1Query<{ model_id: string; value: number }>(
-    "select model_id, value from votes where user_id = ?",
-    [user.id]
-  );
+  const rows = user?.onboarded
+    ? await d1Query<{ model_id: string; value: number }>(
+        "select model_id, value from votes where user_id = ?",
+        [user.id]
+      )
+    : await (async () => {
+        const anonId = await getAnonId(false);
+        if (!anonId) return [];
+        return d1Query<{ model_id: string; value: number }>(
+          "select model_id, value from anon_votes where anon_id = ?",
+          [anonId]
+        );
+      })();
   return Object.fromEntries(rows.map((v) => [v.model_id, v.value]));
 }
 
@@ -271,7 +280,8 @@ export async function getSiteStats(): Promise<SiteStats> {
   const rows = await d1Query<SiteStats>(
     `select
        (select count(*) from tier_lists where is_public = 1) as list_count,
-       (select count(*) from votes) + (select count(*) from list_votes) as vote_count,
+       (select count(*) from votes) + (select count(*) from list_votes)
+         + (select count(*) from anon_votes) + (select count(*) from anon_list_votes) as vote_count,
        (select count(*) from visits) as visitor_count`
   );
   return rows[0] ?? { list_count: 0, vote_count: 0, visitor_count: 0 };
