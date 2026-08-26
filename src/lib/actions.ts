@@ -1,13 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { customAlphabet } from "nanoid";
 import { d1Query } from "./d1";
 import { bustModelsCache } from "./data";
 import { generateAndStoreOg } from "./og";
 import { createSession, destroySession, getSessionUser } from "./auth";
-import { checkActionRateLimit, checkVoteRateLimit, claimAnonVotes, getAnonId } from "./anon";
+import {
+  checkActionRateLimit,
+  checkUserVoteRateLimit,
+  checkVoteRateLimit,
+  claimAnonVotes,
+  getAnonId,
+  getAnonIdentity,
+} from "./anon";
 import { type Tier, type TierDef } from "./types";
 
 const slugId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 10);
@@ -19,7 +27,19 @@ function safeNext(next: string, fallback: string): string {
 }
 const rowId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 16);
 
+/** Defence in depth against cross-site invocation of authed actions. */
+async function assertSameOrigin() {
+  const h = await headers();
+  const origin = h.get("origin");
+  if (!origin) return; // same-origin form posts may omit it
+  const site = process.env.NEXT_PUBLIC_SITE_URL;
+  if (site && new URL(origin).origin !== new URL(site).origin) {
+    throw new Error("Cross-origin request rejected");
+  }
+}
+
 async function requireUser() {
+  await assertSameOrigin();
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (!user.onboarded) redirect("/welcome");
@@ -35,6 +55,7 @@ const RESERVED = new Set([
 ]);
 
 export async function updateProfile(formData: FormData) {
+  await assertSameOrigin();
   const session = await getSessionUser();
   if (!session) redirect("/login");
 
@@ -111,6 +132,9 @@ export async function castVote(modelId: string, value: 1 | -1 | 0) {
 
   try {
     if (user?.onboarded) {
+      if (value !== 0 && !(await checkUserVoteRateLimit(user.id))) {
+        return { error: "That's a lot of voting for one day — try again tomorrow." };
+      }
       if (value === 0) {
         await d1Query("delete from votes where user_id = ? and model_id = ?", [
           user.id,
@@ -124,9 +148,14 @@ export async function castVote(modelId: string, value: 1 | -1 | 0) {
         );
       }
     } else {
-      const anonId = await getAnonId();
-      if (!anonId) return { error: "Couldn't record that vote." };
-      if (!(await checkVoteRateLimit(anonId))) {
+      const identity = await getAnonIdentity();
+      if (!identity) return { error: "Couldn't record that vote." };
+      // A caller that discards cookies would otherwise mint a fresh identity per
+      // request and bypass the per-identity cap: never count a vote from an
+      // identity this same request created.
+      if (identity.fresh) return { retry: true as const };
+      const anonId = identity.id;
+      if (value !== 0 && !(await checkVoteRateLimit(anonId))) {
         return { error: "That's a lot of voting for one day — try again tomorrow." };
       }
       if (value === 0) {
@@ -306,6 +335,9 @@ export async function castListVote(tierListId: string, value: 1 | -1 | 0) {
 
   try {
     if (user?.onboarded) {
+      if (value !== 0 && !(await checkUserVoteRateLimit(user.id))) {
+        return { error: "That's a lot of voting for one day — try again tomorrow." };
+      }
       if (value === 0) {
         await d1Query("delete from list_votes where user_id = ? and tier_list_id = ?", [
           user.id,
@@ -319,9 +351,11 @@ export async function castListVote(tierListId: string, value: 1 | -1 | 0) {
         );
       }
     } else {
-      const anonId = await getAnonId();
-      if (!anonId) return { error: "Couldn't record that vote." };
-      if (!(await checkVoteRateLimit(anonId))) {
+      const identity = await getAnonIdentity();
+      if (!identity) return { error: "Couldn't record that vote." };
+      if (identity.fresh) return { retry: true as const };
+      const anonId = identity.id;
+      if (value !== 0 && !(await checkVoteRateLimit(anonId))) {
         return { error: "That's a lot of voting for one day — try again tomorrow." };
       }
       if (value === 0) {

@@ -61,12 +61,16 @@ export default function VoteButtons({ modelId, netScore, userVote, size = "sm", 
         netScore: optimistic.netScore - optimistic.userVote + next,
         userVote: next,
       });
-      const result =
+      const send = () =>
         kind === "list"
-          ? await castListVote(modelId, next as 1 | -1 | 0)
-          : await castVote(modelId, next as 1 | -1 | 0);
-      if (result?.error) {
-        setError(result.error);
+          ? castListVote(modelId, next as 1 | -1 | 0)
+          : castVote(modelId, next as 1 | -1 | 0);
+      // The first vote from a new browser issues the identity cookie; retry
+      // once so it lands under the (now persisted) identity.
+      let result = await send();
+      if (result && "retry" in result && result.retry) result = await send();
+      if (result && "error" in result && result.error) {
+        setError(result.error as string);
         router.refresh(); // drop the optimistic state
       }
     });

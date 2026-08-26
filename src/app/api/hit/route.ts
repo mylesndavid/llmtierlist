@@ -1,5 +1,5 @@
 import { d1Query } from "@/lib/d1";
-import { checkActionRateLimit } from "@/lib/anon";
+import { checkActionRateLimit, getAnonIdentity, ipBucket } from "@/lib/anon";
 
 const BOT_RE = /bot|crawl|spider|slurp|preview|externalhit|scrape|curl|wget|python|headless/i;
 
@@ -8,24 +8,16 @@ export async function POST(request: Request) {
   const ua = request.headers.get("user-agent") ?? "";
   if (!ua || BOT_RE.test(ua)) return new Response(null, { status: 204 });
 
-  const ip =
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
-    "unknown";
+  // Issue the signed voting identity here so it is already persisted by the
+  // time anyone votes (votes refuse identities minted in the same request).
+  await getAnonIdentity();
+
   const day = new Date().toISOString().slice(0, 10);
+  // Keyed on the Cloudflare-provided IP only. The User-Agent is client
+  // controlled, so including it let one host mint unlimited visitor rows.
+  const visitor = (await ipBucket("visit")).split(":")[1];
 
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(`${day}|${ip}|${ua}`)
-  );
-  const visitor = [...new Uint8Array(digest)]
-    .slice(0, 12)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  // one visitor row per browser per day; cap writes so the beacon can't be
-  // used to bloat the table
-  if (!(await checkActionRateLimit(`hit:${visitor}`, 200))) {
+  if (!(await checkActionRateLimit(`hit:${visitor}`, 100))) {
     return new Response(null, { status: 204 });
   }
   await d1Query(
