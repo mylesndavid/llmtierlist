@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { getBaseModelsWithStats, getCurrentUser, getUserVotes } from "@/lib/data";
+import { getBaseModelsWithStats } from "@/lib/data";
 import { formatContextWindow, formatPrice, modalityList, paramsDetail, plainDescription } from "@/lib/tiers";
 import VendorLogo from "@/components/VendorLogo";
-import VoteButtons from "@/components/VoteButtons";
 import ModalityIcon from "@/components/ModalityIcons";
 import ComparePicker from "@/components/ComparePicker";
 import StarRating from "@/components/StarRating";
@@ -40,6 +39,25 @@ function Row({
   );
 }
 
+
+function Score({ m }: { m: ModelWithStats }) {
+  const n = m.stats.net_score;
+  return (
+    <>
+      <span
+        className={
+          n > 0 ? "text-emerald-400" : n < 0 ? "text-rose-400" : "text-muted"
+        }
+      >
+        {n > 0 ? `+${n}` : n}
+      </span>
+      <span className="block text-[11px] font-normal text-muted">
+        {m.stats.upvotes} up · {m.stats.downvotes} down
+      </span>
+    </>
+  );
+}
+
 function Modalities({ m }: { m: ModelWithStats }) {
   const inputs = modalityList(m.input_modalities);
   const outputs = modalityList(m.output_modalities);
@@ -62,11 +80,9 @@ export default async function ComparePage({
 }: {
   searchParams: Promise<{ a?: string; b?: string }>;
 }) {
-  const [{ a: aSlug, b: bSlug }, models, userVotes, user] = await Promise.all([
+  const [{ a: aSlug, b: bSlug }, models] = await Promise.all([
     searchParams,
     getBaseModelsWithStats(),
-    getUserVotes(),
-    getCurrentUser(),
   ]);
 
   const ranked = [...models].sort(
@@ -214,25 +230,7 @@ export default async function ComparePage({
           }
         />
         )}
-        <Row
-          label="Votes"
-          a={
-            <VoteButtons
-              modelId={a.id}
-              netScore={a.stats.net_score}
-              userVote={userVotes[a.id] ?? 0}
-              signedIn={!!user}
-            />
-          }
-          b={
-            <VoteButtons
-              modelId={b.id}
-              netScore={b.stats.net_score}
-              userVote={userVotes[b.id] ?? 0}
-              signedIn={!!user}
-            />
-          }
-        />
+        <Row label="Votes" a={<Score m={a} />} b={<Score m={b} />} />
         <div className="grid grid-cols-[4.5rem_1fr_1fr] gap-2 px-3 py-3 sm:grid-cols-[7rem_1fr_1fr] sm:gap-4 sm:px-4">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">About</div>
           {[a, b].map((m) => (
