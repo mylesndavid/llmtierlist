@@ -122,6 +122,20 @@ function parseParams(id, name) {
   };
 }
 
+/**
+ * Labs usually state the real split in prose — "13B active parameters out of
+ * 284B total". That beats both name parsing and safetensors totals (which
+ * include auxiliary weights), so prefer it when present.
+ */
+function paramsFromDescription(text = "") {
+  const m = text.match(
+    /(\d+(?:\.\d+)?)\s*([bt])\s*active\s+parameters?\s*(?:out of|of|from)\s*(\d+(?:\.\d+)?)\s*([bt])/i
+  );
+  if (!m) return null;
+  const scale = (v, u) => (u.toLowerCase() === "t" ? Number(v) * 1000 : Number(v));
+  return { active_params_b: scale(m[1], m[2]), params_b: scale(m[3], m[4]) };
+}
+
 function detectMoe(model, activeParams) {
   if (activeParams) return 1;
   const text = `${model.name} ${model.description ?? ""}`.toLowerCase();
@@ -228,7 +242,8 @@ for (const m of orModels) {
     input_modalities: (m.architecture?.input_modalities ?? []).join(","),
     output_modalities: (m.architecture?.output_modalities ?? []).join(","),
     ...(() => {
-      const p = parseParams(m.id, m.name);
+      const stated = paramsFromDescription(m.description);
+      const p = stated ?? parseParams(m.id, m.name);
       return { ...p, is_moe: detectMoe(m, p.active_params_b) };
     })(),
     hf_id: m.hugging_face_id ?? null,
@@ -305,7 +320,8 @@ let enriched = 0;
 for (const r of rows) {
   const info = r.hf_id ? paramsByRepo.get(r.hf_id) : null;
   if (!info) continue;
-  if (info.params_b) r.params_b = info.params_b;
+  const stated = paramsFromDescription(r.description);
+  if (info.params_b && !stated) r.params_b = info.params_b;
   if (!r.active_params_b && info.active_params_b) r.active_params_b = info.active_params_b;
   r.experts = info.experts;
   r.experts_active = info.experts_active;

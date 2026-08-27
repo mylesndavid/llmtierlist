@@ -130,9 +130,15 @@ export function paramsDetail(model: {
   is_moe: number;
 }): string | null {
   const fmt = (b: number) => (b >= 1000 ? `${(b / 1000).toFixed(1)}T` : `${b}B`);
-  if (model.active_params_b) return `${fmt(model.active_params_b)} active`;
+  if (model.active_params_b) {
+    const routing =
+      model.experts && model.experts_active
+        ? ` · ${model.experts_active}/${model.experts} experts per token`
+        : "";
+    return `${fmt(model.active_params_b)} active${routing}`;
+  }
   if (model.experts && model.experts_active) {
-    return `${model.experts_active} of ${model.experts} experts active`;
+    return `${model.experts} experts · ${model.experts_active} per token`;
   }
   if (model.experts) return `${model.experts} experts`;
   return model.is_moe ? "mixture of experts" : null;
