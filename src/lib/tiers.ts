@@ -97,3 +97,20 @@ export function plainDescription(text: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+export function formatPrice(perMillion: number | null): string {
+  if (perMillion == null) return "—";
+  if (perMillion === 0) return "Free";
+  if (perMillion < 1) return `$${perMillion.toFixed(2).replace(/0$/, "")}`;
+  return `$${perMillion % 1 === 0 ? perMillion : perMillion.toFixed(2)}`;
+}
+
+export function formatParams(total: number | null, active: number | null): string | null {
+  if (total == null) return null;
+  const fmt = (b: number) => (b >= 1000 ? `${(b / 1000).toFixed(b % 1000 === 0 ? 0 : 1)}T` : `${b}B`);
+  return active ? `${fmt(total)} · ${fmt(active)} active` : fmt(total);
+}
+
+export function modalityList(csv: string | null): string[] {
+  return (csv ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+}

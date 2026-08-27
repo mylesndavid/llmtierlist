@@ -7,13 +7,14 @@ import {
   getReviewsForModel,
   getUserVotes,
 } from "@/lib/data";
-import { formatContextWindow, plainDescription } from "@/lib/tiers";
+import { plainDescription } from "@/lib/tiers";
 import VoteButtons from "@/components/VoteButtons";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewCard from "@/components/ReviewCard";
 import VendorLogo from "@/components/VendorLogo";
 import ScoreHistory from "@/components/ScoreHistory";
+import SpecGrid from "@/components/SpecGrid";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,11 @@ export default async function ModelPage({
               <span className="border border-edge px-1.5 py-0.5 text-[10px] sm:text-xs">
                 {model.license === "open-weights" ? "Open weights" : "Proprietary"}
               </span>
+              {model.is_moe ? (
+                <span className="border border-edge px-1.5 py-0.5 text-[10px] sm:text-xs">
+                  MoE
+                </span>
+              ) : null}
             </p>
           </div>
           <VoteButtons
@@ -72,11 +78,10 @@ export default async function ModelPage({
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-foreground/90 [overflow-wrap:anywhere] line-clamp-4 sm:line-clamp-none">
           {plainDescription(model.description)}
         </p>
-        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
-          <span>Context: <span className="text-foreground">{formatContextWindow(model.context_window)}</span></span>
-          {model.release_date && (
-            <span>Released: <span className="text-foreground">{new Date(model.release_date + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span></span>
-          )}
+        <div className="mt-4">
+          <SpecGrid model={model} />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
           <span>
             {stats.upvotes} up · {stats.downvotes} down
           </span>

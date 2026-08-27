@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ModelWithStats } from "@/lib/types";
-import { formatContextWindow } from "@/lib/tiers";
+import { formatContextWindow, formatParams, formatPrice } from "@/lib/tiers";
 import VoteButtons from "./VoteButtons";
 import StarRating from "./StarRating";
 import VendorLogo from "./VendorLogo";
@@ -108,31 +108,45 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
         {shown.map((m) => (
           <div
             key={m.id}
-            className="flex min-w-0 flex-col gap-3 border border-edge bg-surface p-4 transition-colors hover:border-muted"
+            className="group relative flex min-w-0 flex-col gap-3 border border-edge bg-surface p-4 transition-colors hover:border-muted"
           >
-            <div className="flex items-start gap-3">
+            <Link
+              href={`/models/${m.slug}`}
+              aria-label={m.name}
+              className="absolute inset-0 z-0"
+            />
+            <div className="pointer-events-none relative z-10 flex items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-sm bg-surface-2 p-1.5">
                 <VendorLogo vendorSlug={m.vendor_slug} className="h-full w-full" />
               </span>
               <div className="min-w-0 flex-1">
-                <Link href={`/models/${m.slug}`} className="block truncate font-semibold hover:underline">
-                  {m.name}
-                </Link>
+                <div className="truncate font-semibold group-hover:underline">{m.name}</div>
                 <div className="text-xs text-muted">{m.vendor}</div>
               </div>
+              <div className="pointer-events-auto">
               <VoteButtons
                 modelId={m.id}
                 netScore={m.stats.net_score}
                 userVote={userVotes[m.id] ?? 0}
                 signedIn={signedIn}
               />
+              </div>
             </div>
-            <p className="line-clamp-2 text-sm text-muted [overflow-wrap:anywhere]">{m.description}</p>
-            <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted">
+            <p className="pointer-events-none relative z-10 line-clamp-2 text-sm text-muted [overflow-wrap:anywhere]">{m.description}</p>
+            <div className="pointer-events-none relative z-10 mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted">
               <span className="border border-edge px-2 py-0.5">
-                {m.license === "open-weights" ? "Open weights" : "Proprietary"}
+                {m.license === "open-weights" ? "Open" : "Closed"}
+              </span>
+              <span title="input / output per 1M tokens">
+                {formatPrice(m.price_in)}/{formatPrice(m.price_out)}
               </span>
               <span>{formatContextWindow(m.context_window)}</span>
+              {formatParams(m.params_b, m.active_params_b) && (
+                <span>
+                  {formatParams(m.params_b, m.active_params_b)}
+                  {m.is_moe ? " MoE" : ""}
+                </span>
+              )}
               {m.release_date && (
                 <span>
                   {new Date(m.release_date + "T00:00:00").toLocaleDateString("en-US", {

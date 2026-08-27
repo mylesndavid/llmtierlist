@@ -26,6 +26,14 @@ create table if not exists models (
   context_window integer,
   base_model_id text,               -- set on variants (thinking mode / service tier)
   variant text,                     -- 'thinking' | 'service' | null (base model)
+  price_in real,                    -- USD per 1M input tokens
+  price_out real,                   -- USD per 1M output tokens
+  input_modalities text,            -- csv: text,image,video,audio
+  output_modalities text,
+  params_b real,                    -- total parameters, billions
+  active_params_b real,             -- active params for MoE models
+  is_moe integer not null default 0,
+  hf_id text,                       -- hugging face repo when open weights
   created_at text not null default (datetime('now'))
 );
 create index if not exists models_vendor_slug_idx on models (vendor_slug);

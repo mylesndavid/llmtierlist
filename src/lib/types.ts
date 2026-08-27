@@ -54,6 +54,14 @@ export interface Model {
   context_window: number | null;
   base_model_id: string | null;
   variant: "thinking" | "service" | null;
+  price_in: number | null;
+  price_out: number | null;
+  input_modalities: string | null;
+  output_modalities: string | null;
+  params_b: number | null;
+  active_params_b: number | null;
+  is_moe: number;
+  hf_id: string | null;
 }
 
 export interface ModelStats {

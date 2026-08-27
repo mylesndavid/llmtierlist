@@ -54,7 +54,7 @@ export default async function RootLayout({
             <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="" className="h-7 w-7" />
-              LLM<span className="text-muted">TierList</span>
+              llmtierlist<span className="text-muted">.com</span>
             </Link>
             <div className="hidden items-center gap-5 text-sm text-muted sm:flex">
               <Link href="/tiers" prefetch className="hover:text-foreground">Official tier list</Link>

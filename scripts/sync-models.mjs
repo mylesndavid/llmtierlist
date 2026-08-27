@@ -99,6 +99,34 @@ function displayVendor(slug) {
     .join(" ");
 }
 
+
+/** "0.0000004" per token -> 0.4 (USD per 1M tokens). */
+function perMillion(raw) {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 1_000_000 * 1000) / 1000 : null;
+}
+
+/**
+ * Parameter counts from the model id/name: "27b" -> 27, "2.4t-a95b" -> total
+ * 2400 with 95 active (mixture-of-experts).
+ */
+function parseParams(id, name) {
+  const hay = `${id} ${name}`.toLowerCase();
+  const m = hay.match(/(\d+(?:\.\d+)?)\s*([bt])(?:-a(\d+(?:\.\d+)?)\s*([bt]))?/);
+  if (!m) return { params_b: null, active_params_b: null };
+  const scale = (v, unit) => (unit === "t" ? Number(v) * 1000 : Number(v));
+  return {
+    params_b: scale(m[1], m[2]),
+    active_params_b: m[3] ? scale(m[3], m[4] ?? "b") : null,
+  };
+}
+
+function detectMoe(model, activeParams) {
+  if (activeParams) return 1;
+  const text = `${model.name} ${model.description ?? ""}`.toLowerCase();
+  return /mixture[- ]of[- ]expert|\bmoe\b/.test(text) ? 1 : 0;
+}
+
 function slugify(orId) {
   return orId
     .toLowerCase()
@@ -138,6 +166,15 @@ for (const m of orModels) {
     context_window: m.context_length ?? null,
     base_model_id: null,
     variant: null,
+    price_in: perMillion(m.pricing?.prompt),
+    price_out: perMillion(m.pricing?.completion),
+    input_modalities: (m.architecture?.input_modalities ?? []).join(","),
+    output_modalities: (m.architecture?.output_modalities ?? []).join(","),
+    ...(() => {
+      const p = parseParams(m.id, m.name);
+      return { ...p, is_moe: detectMoe(m, p.active_params_b) };
+    })(),
+    hf_id: m.hugging_face_id ?? null,
   });
 }
 
@@ -218,20 +255,30 @@ for (const row of existing) {
   console.log(`Freed slug "${row.slug}" from retired ${row.id} -> ${freed}`);
 }
 
-// 11 params per row, D1 caps at 100 params per query -> 9 rows per batch
-const BATCH = 9;
+// 19 params per row, D1 caps at 100 params per query -> 5 rows per batch
+const BATCH = 5;
 for (let i = 0; i < rows.length; i += BATCH) {
   const batch = rows.slice(i, i + BATCH);
   await d1(
-    `insert into models (id, slug, name, vendor, vendor_slug, description, license, release_date, context_window, base_model_id, variant)
-     values ${batch.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
+    `insert into models (id, slug, name, vendor, vendor_slug, description, license,
+        release_date, context_window, base_model_id, variant, price_in, price_out,
+        input_modalities, output_modalities, params_b, active_params_b, is_moe, hf_id)
+     values ${batch.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
      on conflict (id) do update set
        slug = excluded.slug, name = excluded.name, vendor = excluded.vendor,
        vendor_slug = excluded.vendor_slug, description = excluded.description,
        license = excluded.license, release_date = excluded.release_date,
        context_window = excluded.context_window,
-       base_model_id = excluded.base_model_id, variant = excluded.variant`,
-    batch.flatMap((r) => [r.id, r.slug, r.name, r.vendor, r.vendor_slug, r.description, r.license, r.release_date, r.context_window, r.base_model_id, r.variant])
+       base_model_id = excluded.base_model_id, variant = excluded.variant,
+       price_in = excluded.price_in, price_out = excluded.price_out,
+       input_modalities = excluded.input_modalities,
+       output_modalities = excluded.output_modalities,
+       params_b = excluded.params_b, active_params_b = excluded.active_params_b,
+       is_moe = excluded.is_moe, hf_id = excluded.hf_id`,
+    batch.flatMap((r) => [r.id, r.slug, r.name, r.vendor, r.vendor_slug, r.description,
+      r.license, r.release_date, r.context_window, r.base_model_id, r.variant,
+      r.price_in, r.price_out, r.input_modalities, r.output_modalities,
+      r.params_b, r.active_params_b, r.is_moe, r.hf_id])
   );
   if ((i / BATCH) % 8 === 0) console.log(`Upserted ${Math.min(i + BATCH, rows.length)}/${rows.length}`);
 }
