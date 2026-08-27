@@ -103,7 +103,8 @@ function displayVendor(slug) {
 /** "0.0000004" per token -> 0.4 (USD per 1M tokens). */
 function perMillion(raw) {
   const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? Math.round(n * 1_000_000 * 1000) / 1000 : null;
+  // keep 5 decimals: some models are priced in fractions of a cent per 1M
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 1_000_000 * 1e5) / 1e5 : null;
 }
 
 /**

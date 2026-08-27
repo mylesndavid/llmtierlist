@@ -98,11 +98,22 @@ export function plainDescription(text: string): string {
     .trim();
 }
 
+/**
+ * Prices are per 1M tokens and often sub-cent, so show enough digits to be
+ * true: $0.10 stays $0.10, $0.078 never becomes $0.08.
+ */
 export function formatPrice(perMillion: number | null): string {
   if (perMillion == null) return "—";
   if (perMillion === 0) return "Free";
-  if (perMillion < 1) return `$${perMillion.toFixed(2).replace(/0$/, "")}`;
-  return `$${perMillion % 1 === 0 ? perMillion : perMillion.toFixed(2)}`;
+
+  const decimals = perMillion >= 1 ? 2 : perMillion >= 0.01 ? 3 : 5;
+  let s = perMillion.toFixed(decimals);
+  if (s.includes(".")) {
+    s = s.replace(/0+$/, "");
+    const [whole, frac = ""] = s.split(".");
+    s = frac.length >= 2 ? `${whole}.${frac}` : `${whole}.${frac.padEnd(2, "0")}`;
+  }
+  return `$${s}`;
 }
 
 export function formatParams(total: number | null, active: number | null): string | null {
