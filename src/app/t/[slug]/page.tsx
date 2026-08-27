@@ -82,6 +82,34 @@ export default async function TierListPage({
     if (model) placements.get(item.tier)?.push(model);
   }
 
+  // Each saved version is a full board, so what changed is the difference
+  // between it and the state that replaced it.
+  type Placement = { model_id: string; tier: string };
+  function summarise(before: Placement[], after: Placement[]): string | null {
+    const prev = new Map(before.map((i) => [i.model_id, i.tier]));
+    const next = new Map(after.map((i) => [i.model_id, i.tier]));
+    let added = 0;
+    let removed = 0;
+    let moved = 0;
+    for (const [id, tier] of next) {
+      if (!prev.has(id)) added++;
+      else if (prev.get(id) !== tier) moved++;
+    }
+    for (const id of prev.keys()) if (!next.has(id)) removed++;
+    const parts: string[] = [];
+    if (added) parts.push(`${added} added`);
+    if (moved) parts.push(`${moved} moved`);
+    if (removed) parts.push(`${removed} removed`);
+    return parts.length ? parts.join(", ") : null;
+  }
+
+  // newest first: versions[0] was replaced by the current board
+  const changeFor = (index: number) => {
+    const before = versions[index].items;
+    const after = index === 0 ? list.items : versions[index - 1].items;
+    return summarise(before, after);
+  };
+
   const isOwner = user?.id === list.user_id;
   const author = list.profiles?.display_name || list.profiles?.username || "anonymous";
 
@@ -189,7 +217,7 @@ export default async function TierListPage({
               {!viewing && <span className="text-muted/60">· viewing</span>}
             </Link>
           </li>
-          {versions.map((ver) => (
+          {versions.map((ver, i) => (
             <li key={ver.version}>
               <Link
                 href={`/t/${list.slug}?v=${ver.version}`}
@@ -200,7 +228,8 @@ export default async function TierListPage({
               >
                 <span className="font-mono text-muted/60">v{ver.version}</span>
                 <span>
-                  revised <TimeAgo iso={ver.created_at} />
+                  <TimeAgo iso={ver.created_at} />
+                  {changeFor(i) && <span className="text-muted/70"> · {changeFor(i)}</span>}
                 </span>
                 {viewing?.version === ver.version && (
                   <span className="text-muted/60">· viewing</span>
