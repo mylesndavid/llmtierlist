@@ -1,4 +1,4 @@
-import { getCurrentUser, getModelsWithStats } from "@/lib/data";
+import { getCurrentUser, getBuilderModels } from "@/lib/data";
 import TierListBuilder from "@/components/TierListBuilder";
 
 export const dynamic = "force-dynamic";
@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "New Tier List" };
 
 export default async function NewTierListPage() {
-  const [models, user] = await Promise.all([getModelsWithStats(), getCurrentUser()]);
+  const [models, user] = await Promise.all([getBuilderModels(), getCurrentUser()]);
 
   return (
     <div className="space-y-6">

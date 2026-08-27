@@ -27,7 +27,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { saveTierList } from "@/lib/actions";
+import { createCustomModel, saveTierList } from "@/lib/actions";
 import {
   DEFAULT_TIERS,
   TIER_PALETTE,
@@ -147,7 +147,10 @@ export default function TierListBuilder({
   signedIn,
 }: Props) {
   const router = useRouter();
-  const modelById = useMemo(() => new Map(models.map((m) => [m.id, m])), [models]);
+  const [extraModels, setExtraModels] = useState<Model[]>([]);
+  const [addingCustom, setAddingCustom] = useState(false);
+  const allModels = useMemo(() => [...extraModels, ...models], [extraModels, models]);
+  const modelById = useMemo(() => new Map(allModels.map((m) => [m.id, m])), [allModels]);
 
   const [tiers, setTiers] = useState<TierDef[]>(initialTiers ?? DEFAULT_TIERS);
   const [containers, setContainers] = useState<Containers>(() => {
@@ -214,6 +217,7 @@ export default function TierListBuilder({
   const vendors = useMemo(() => {
     const counts = new Map<string, { slug: string; name: string; count: number }>();
     for (const m of models) {
+      if (m.vendor_slug === "custom") continue;
       const v = counts.get(m.vendor_slug);
       if (v) v.count++;
       else counts.set(m.vendor_slug, { slug: m.vendor_slug, name: m.vendor, count: 1 });
@@ -254,6 +258,48 @@ export default function TierListBuilder({
       if (containers[key].includes(id)) return key;
     }
     return null;
+  }
+
+  async function addCustom(tierKey: string, rawName: string) {
+    const name = rawName.trim();
+    if (!name || addingCustom) return;
+    setAddingCustom(true);
+    const result = await createCustomModel(name);
+    setAddingCustom(false);
+    if (!result || "error" in result) {
+      setError(result?.error ?? "Couldn't add that model.");
+      return;
+    }
+    const created = result.model;
+    const model: Model = {
+      id: created.id,
+      slug: `custom-${created.id.split("/")[1]}`,
+      name: created.name,
+      vendor: "Custom",
+      vendor_slug: "custom",
+      description: "",
+      license: "proprietary",
+      release_date: null,
+      context_window: null,
+      base_model_id: null,
+      variant: null,
+      price_in: null,
+      price_out: null,
+      input_modalities: null,
+      output_modalities: null,
+      params_b: null,
+      active_params_b: null,
+      is_moe: 0,
+      hf_id: null,
+      experts: null,
+      experts_active: null,
+    };
+    setExtraModels((prev) => [model, ...prev]);
+    setContainers((prev) => ({
+      ...prev,
+      [tierKey]: [...(prev[tierKey] ?? []), model.id],
+    }));
+    setQuickAddQuery("");
   }
 
   function quickAdd(tierKey: string, modelId: string) {
@@ -540,6 +586,7 @@ export default function TierListBuilder({
                         if (e.key === "Enter") {
                           const first = quickAddResults()[0];
                           if (first) quickAdd(tier.key, first.id);
+                          else if (quickAddQuery.trim()) addCustom(tier.key, quickAddQuery);
                           e.preventDefault();
                         }
                       }}
@@ -569,8 +616,18 @@ export default function TierListBuilder({
                         {m.name}
                       </button>
                     ))}
-                    {quickAddResults().length === 0 && (
-                      <span className="px-1 py-1 text-xs text-muted">No unplaced models match.</span>
+                    {quickAddQuery.trim() && (
+                      <button
+                        type="button"
+                        disabled={addingCustom}
+                        onClick={() => addCustom(tier.key, quickAddQuery)}
+                        className="flex items-center gap-1.5 rounded-sm border border-dashed border-edge px-2 py-1 text-xs font-medium text-muted hover:border-muted hover:text-foreground disabled:opacity-50"
+                      >
+                        + Add &ldquo;{quickAddQuery.trim()}&rdquo; as a custom model
+                      </button>
+                    )}
+                    {quickAddResults().length === 0 && !quickAddQuery.trim() && (
+                      <span className="px-1 py-1 text-xs text-muted">No unplaced models left.</span>
                     )}
                   </div>
                 </div>

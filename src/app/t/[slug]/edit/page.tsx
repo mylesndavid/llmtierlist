@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getCurrentUser, getModelsWithStats, getTierListBySlug } from "@/lib/data";
+import { getCurrentUser, getBuilderModels, getTierListBySlug } from "@/lib/data";
 import TierListBuilder from "@/components/TierListBuilder";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ export default async function EditTierListPage({
   const { slug } = await params;
   const [list, models, user] = await Promise.all([
     getTierListBySlug(slug),
-    getModelsWithStats(),
+    getBuilderModels(),
     getCurrentUser(),
   ]);
   if (!list) notFound();

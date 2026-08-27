@@ -34,6 +34,8 @@ create table if not exists models (
   active_params_b real,             -- active params for MoE models
   is_moe integer not null default 0,
   hf_id text,                       -- hugging face repo when open weights
+  is_custom integer not null default 0, -- user-added entry, not from OpenRouter
+  created_by text,                  -- owner of a custom entry
   created_at text not null default (datetime('now'))
 );
 create index if not exists models_vendor_slug_idx on models (vendor_slug);

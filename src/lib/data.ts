@@ -71,7 +71,7 @@ export async function getModelsWithStats(): Promise<ModelWithStats[]> {
   }
   const data = await cachedJson<ModelWithStats[]>(MODELS_CACHE_KEY, MODELS_TTL_S, async () => {
     const rows = await d1Query<ModelRow>(
-      `${MODEL_SELECT} where coalesce(m.variant, '') != 'service' order by m.name`
+      `${MODEL_SELECT} where coalesce(m.variant, '') != 'service' and m.is_custom = 0 order by m.name`
     );
     return rows.map(withStats);
   });
@@ -82,6 +82,17 @@ export async function getModelsWithStats(): Promise<ModelWithStats[]> {
 /** Base models only — for the leaderboard, directory, and community tiers. */
 export async function getBaseModelsWithStats(): Promise<ModelWithStats[]> {
   return (await getModelsWithStats()).filter((m) => !m.variant);
+}
+
+/** Catalog plus the signed-in user's own custom entries, for the builder. */
+export async function getBuilderModels(): Promise<ModelWithStats[]> {
+  const [catalog, user] = await Promise.all([getModelsWithStats(), getSessionUser()]);
+  if (!user) return catalog;
+  const mine = await d1Query<ModelRow>(
+    `${MODEL_SELECT} where m.is_custom = 1 and m.created_by = ? order by m.name`,
+    [user.id]
+  );
+  return [...mine.map(withStats), ...catalog];
 }
 
 export async function getModelBySlug(slug: string): Promise<ModelWithStats | null> {

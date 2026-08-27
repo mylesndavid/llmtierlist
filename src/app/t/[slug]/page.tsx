@@ -152,10 +152,9 @@ export default async function TierListPage({
         </div>
       </div>
       {viewing && (
-        <p className="border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          Viewing an earlier version of this list, saved{" "}
-          <TimeAgo iso={viewing.created_at} />.{" "}
-          <Link href={`/t/${list.slug}`} className="underline">
+        <p className="text-xs text-muted">
+          Viewing an earlier version saved <TimeAgo iso={viewing.created_at} />.{" "}
+          <Link href={`/t/${list.slug}`} className="underline hover:text-foreground">
             Back to current
           </Link>
         </p>
@@ -165,79 +164,49 @@ export default async function TierListPage({
         <TierBoard placements={placements} tiers={shownTiers} />
       </FullscreenBoard>
 
-      <section className="pt-4">
-        <h2 className="mb-2 text-sm font-semibold text-muted">History</h2>
-        <ol className="overflow-hidden rounded-sm border border-edge bg-surface">
+      <section className="pt-6">
+        <h2 className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted/70">
+          History
+        </h2>
+        <ol className="space-y-1 text-xs text-muted">
           <li>
             <Link
               href={`/t/${list.slug}`}
-              className={`flex items-baseline gap-3 border-b border-edge px-3 py-2.5 text-sm transition-colors hover:bg-surface-2 ${
-                viewing ? "" : "bg-surface-2/60"
+              className={`inline-flex items-baseline gap-2 hover:text-foreground ${
+                viewing ? "" : "text-foreground/80"
               }`}
             >
-              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
-              <span className="min-w-0 flex-1">
-                <span className="font-medium">
-                  {versions.length > 0 ? "Updated" : "Published"}
-                </span>
-                {!viewing && (
-                  <span className="ml-2 rounded-sm border border-edge px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-                    viewing
-                  </span>
-                )}
-                <span className="ml-2 text-muted">
-                  <TimeAgo iso={list.updated_at} />
-                </span>
+              <span className="font-mono text-muted/60">v{versions.length + 1}</span>
+              <span>
+                {versions.length > 0 ? "updated" : "published"}{" "}
+                <TimeAgo iso={list.updated_at} />
               </span>
-              <span className="shrink-0 font-mono text-xs text-muted">
-                v{versions.length + 1}
-              </span>
+              {!viewing && <span className="text-muted/60">· viewing</span>}
             </Link>
           </li>
-
           {versions.map((ver) => (
             <li key={ver.version}>
               <Link
                 href={`/t/${list.slug}?v=${ver.version}`}
-                className={`flex items-baseline gap-3 border-b border-edge px-3 py-2.5 text-sm transition-colors hover:bg-surface-2 ${
-                  viewing?.version === ver.version ? "bg-surface-2/60" : ""
+                title={new Date(ver.created_at.replace(" ", "T") + "Z").toLocaleString()}
+                className={`inline-flex items-baseline gap-2 hover:text-foreground ${
+                  viewing?.version === ver.version ? "text-foreground/80" : ""
                 }`}
               >
-                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-muted/60" />
-                <span className="min-w-0 flex-1">
-                  <span className="font-medium">Revision</span>
-                  {viewing?.version === ver.version && (
-                    <span className="ml-2 rounded-sm border border-edge px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-                      viewing
-                    </span>
-                  )}
-                  <span className="ml-2 text-muted">
-                    <TimeAgo iso={ver.created_at} />
-                  </span>
-                  <span className="ml-2 hidden text-xs text-muted sm:inline">
-                    {new Date(ver.created_at.replace(" ", "T") + "Z").toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
+                <span className="font-mono text-muted/60">v{ver.version}</span>
+                <span>
+                  revised <TimeAgo iso={ver.created_at} />
                 </span>
-                <span className="shrink-0 font-mono text-xs text-muted">v{ver.version}</span>
+                {viewing?.version === ver.version && (
+                  <span className="text-muted/60">· viewing</span>
+                )}
               </Link>
             </li>
           ))}
-
-          <li className="flex items-baseline gap-3 px-3 py-2.5 text-sm text-muted">
-            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full border border-edge" />
-            <span className="min-w-0 flex-1">
-              Created <TimeAgo iso={list.created_at} />
-              <span className="ml-2 hidden text-xs sm:inline">
-                {new Date(list.created_at.replace(" ", "T") + "Z").toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </span>
+          <li className="inline-flex items-baseline gap-2 text-muted/70">
+            <span className="font-mono text-muted/50">v0</span>
+            <span>
+              created <TimeAgo iso={list.created_at} />
             </span>
           </li>
         </ol>
