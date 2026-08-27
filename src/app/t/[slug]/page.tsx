@@ -209,7 +209,6 @@ export default async function TierListPage({
             </li>
           ))}
           <li className="inline-flex items-baseline gap-2 text-muted/70">
-            <span className="font-mono text-muted/50">v0</span>
             <span>
               created <TimeAgo iso={list.created_at} />
             </span>
