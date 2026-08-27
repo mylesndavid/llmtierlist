@@ -76,30 +76,28 @@ export default async function ModelPage({
               ) : null}
             </p>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <VoteButtons
-              modelId={model.id}
-              netScore={stats.net_score}
-              userVote={userVotes[model.id] ?? 0}
-              signedIn={!!user}
-              size="lg"
-            />
-            <Link
-              href={`/compare?a=${model.slug}`}
-              className="whitespace-nowrap rounded-sm border border-edge px-2.5 py-1 text-xs text-muted hover:border-muted hover:text-foreground"
-            >
-              Compare
-            </Link>
-          </div>
+          <VoteButtons
+            modelId={model.id}
+            netScore={stats.net_score}
+            userVote={userVotes[model.id] ?? 0}
+            signedIn={!!user}
+            size="lg"
+          />
         </div>
         <ExpandableText text={plainDescription(model.description)} />
         <div className="mt-4">
           <SpecGrid model={model} />
         </div>
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted">
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
           <span>
             {stats.upvotes} up · {stats.downvotes} down
           </span>
+          <Link
+            href={`/compare?a=${model.slug}`}
+            className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+          >
+            Compare with another model
+          </Link>
           {stats.avg_rating != null && (
             <span className="flex items-center gap-1">
               <StarRating rating={Number(stats.avg_rating)} size="text-xs" />

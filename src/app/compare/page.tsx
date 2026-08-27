@@ -189,6 +189,7 @@ export default async function ComparePage({
               : "—"
           }
         />
+        {(a.stats.avg_rating != null || b.stats.avg_rating != null) && (
         <Row
           label="Rating"
           a={
@@ -212,8 +213,9 @@ export default async function ComparePage({
             )
           }
         />
+        )}
         <Row
-          label="Community"
+          label="Votes"
           a={
             <VoteButtons
               modelId={a.id}
