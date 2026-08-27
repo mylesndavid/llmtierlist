@@ -64,6 +64,7 @@ export interface Model {
   hf_id: string | null;
   experts: number | null;
   experts_active: number | null;
+  is_custom?: number;
 }
 
 export interface ModelStats {

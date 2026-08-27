@@ -33,7 +33,7 @@ export default function TierBoard({
                 <span className="self-center px-3 text-xs text-muted">{emptyHint}</span>
               ) : (
                 models.map((m) =>
-                  linkModels ? (
+                  linkModels && !m.is_custom ? (
                     <Link key={m.id} href={`/models/${m.slug}`} className="w-1/4 hover:brightness-125 sm:w-36">
                       <ModelChip model={m} />
                     </Link>

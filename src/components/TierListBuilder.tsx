@@ -149,6 +149,7 @@ export default function TierListBuilder({
   const router = useRouter();
   const [extraModels, setExtraModels] = useState<Model[]>([]);
   const [addingCustom, setAddingCustom] = useState(false);
+  const [customVendor, setCustomVendor] = useState("custom");
   const allModels = useMemo(() => [...extraModels, ...models], [extraModels, models]);
   const modelById = useMemo(() => new Map(allModels.map((m) => [m.id, m])), [allModels]);
 
@@ -264,7 +265,7 @@ export default function TierListBuilder({
     const name = rawName.trim();
     if (!name || addingCustom) return;
     setAddingCustom(true);
-    const result = await createCustomModel(name);
+    const result = await createCustomModel(name, customVendor);
     setAddingCustom(false);
     if (!result || "error" in result) {
       setError(result?.error ?? "Couldn't add that model.");
@@ -275,8 +276,8 @@ export default function TierListBuilder({
       id: created.id,
       slug: `custom-${created.id.split("/")[1]}`,
       name: created.name,
-      vendor: "Custom",
-      vendor_slug: "custom",
+      vendor: created.vendor ?? "Custom",
+      vendor_slug: created.vendor_slug ?? "custom",
       description: "",
       license: "proprietary",
       release_date: null,
@@ -617,14 +618,34 @@ export default function TierListBuilder({
                       </button>
                     ))}
                     {quickAddQuery.trim() && (
-                      <button
-                        type="button"
-                        disabled={addingCustom}
-                        onClick={() => addCustom(tier.key, quickAddQuery)}
-                        className="flex items-center gap-1.5 rounded-sm border border-dashed border-edge px-2 py-1 text-xs font-medium text-muted hover:border-muted hover:text-foreground disabled:opacity-50"
-                      >
-                        + Add &ldquo;{quickAddQuery.trim()}&rdquo; as a custom model
-                      </button>
+                      <div className="flex w-full flex-wrap items-center gap-2 border-t border-edge/60 pt-2">
+                        <button
+                          type="button"
+                          disabled={addingCustom}
+                          onClick={() => addCustom(tier.key, quickAddQuery)}
+                          className="flex items-center gap-1.5 rounded-sm border border-dashed border-edge px-2 py-1 text-xs font-medium text-muted hover:border-muted hover:text-foreground disabled:opacity-50"
+                        >
+                          + Add &ldquo;{quickAddQuery.trim()}&rdquo; as a custom model
+                        </button>
+                        <span className="text-[11px] text-muted">logo:</span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {["custom", ...vendors.slice(0, 12).map((v) => v.slug)].map((slug) => (
+                            <button
+                              key={slug}
+                              type="button"
+                              title={slug === "custom" ? "No lab" : slug}
+                              onClick={() => setCustomVendor(slug)}
+                              className={`grid h-6 w-6 place-items-center rounded-sm p-0.5 transition-colors ${
+                                customVendor === slug
+                                  ? "bg-foreground"
+                                  : "bg-neutral-900 hover:bg-surface"
+                              }`}
+                            >
+                              <VendorLogo vendorSlug={slug} className="h-full w-full" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     )}
                     {quickAddResults().length === 0 && !quickAddQuery.trim() && (
                       <span className="px-1 py-1 text-xs text-muted">No unplaced models left.</span>

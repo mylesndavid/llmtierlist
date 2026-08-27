@@ -49,6 +49,7 @@ const MODEL_SELECT = `
          m.release_date, m.context_window, m.base_model_id, m.variant,
          m.price_in, m.price_out, m.input_modalities, m.output_modalities,
          m.params_b, m.active_params_b, m.is_moe, m.hf_id, m.experts, m.experts_active,
+         m.is_custom,
          s.upvotes, s.downvotes, s.net_score, s.review_count, s.avg_rating,
          s.placement_count, s.avg_tier_value
   from models m left join model_stats s on s.model_id = m.id`;
@@ -385,6 +386,7 @@ export interface LabSummary {
 }
 
 export async function getLab(vendorSlug: string): Promise<LabSummary | null> {
+  if (vendorSlug === "custom") return null; // not a real lab
   const models = (await getModelsWithStats()).filter(
     (m) => m.vendor_slug === vendorSlug && !m.variant
   );

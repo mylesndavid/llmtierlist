@@ -27,7 +27,8 @@ export default async function ModelPage({
 }) {
   const { slug } = await params;
   const model = await getModelBySlug(slug);
-  if (!model) notFound();
+  // custom entries belong to their creator's lists, not the public catalog
+  if (!model || model.is_custom) notFound();
 
   // Variants (thinking modes, service tiers) share the base model's page so
   // votes and reviews don't fragment.

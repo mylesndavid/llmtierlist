@@ -231,20 +231,46 @@ export async function deleteReview(reviewId: string, modelSlug: string) {
  * that isn't on OpenRouter). Owned by the creator, usable in their lists, and
  * kept out of the directory, leaderboard, and official tier list.
  */
-export async function createCustomModel(rawName: string) {
+export async function createCustomModel(rawName: string, rawVendor = "custom") {
   const user = await requireUser();
   const name = String(rawName ?? "").trim().slice(0, 60);
   if (name.length < 2) return { error: "Give the model a name." };
+
+  // Only labs we actually ship a logo for (or the generic mark).
+  let vendorSlug = "custom";
+  let vendorName = "Custom";
+  const candidate = String(rawVendor ?? "").trim();
+  if (candidate && candidate !== "custom" && /^[a-z0-9~._-]{1,40}$/i.test(candidate)) {
+    const known = await d1Query<{ vendor: string }>(
+      "select vendor from models where vendor_slug = ? and is_custom = 0 limit 1",
+      [candidate]
+    );
+    if (known.length > 0) {
+      vendorSlug = candidate;
+      vendorName = known[0].vendor;
+    }
+  }
   if (!(await checkActionRateLimit(`custom:${user.id}`, 40))) {
     return { error: "That's a lot of custom models today — try again tomorrow." };
   }
 
-  const existing = await d1Query<{ id: string; name: string }>(
-    "select id, name from models where is_custom = 1 and created_by = ? and lower(name) = lower(?)",
+  const existing = await d1Query<{ id: string; name: string; vendor: string; vendor_slug: string }>(
+    "select id, name, vendor, vendor_slug from models where is_custom = 1 and created_by = ? and lower(name) = lower(?)",
     [user.id, name]
   );
   if (existing.length > 0) {
-    return { ok: true, model: { id: existing[0].id, name: existing[0].name } };
+    // adopt a newly chosen logo for an entry they already made
+    if (existing[0].vendor_slug !== vendorSlug) {
+      await d1Query("update models set vendor = ?, vendor_slug = ? where id = ?", [
+        vendorName,
+        vendorSlug,
+        existing[0].id,
+      ]);
+    }
+    return {
+      ok: true,
+      model: { id: existing[0].id, name: existing[0].name, vendor: vendorName, vendor_slug: vendorSlug },
+    };
   }
 
   const suffix = rowId().slice(0, 8);
@@ -252,10 +278,10 @@ export async function createCustomModel(rawName: string) {
   await d1Query(
     `insert into models (id, slug, name, vendor, vendor_slug, description, license,
        release_date, context_window, is_custom, created_by)
-     values (?, ?, ?, 'Custom', 'custom', '', 'proprietary', null, null, 1, ?)`,
-    [id, `custom-${suffix}`, name, user.id]
+     values (?, ?, ?, ?, ?, '', 'proprietary', null, null, 1, ?)`,
+    [id, `custom-${suffix}`, name, vendorName, vendorSlug, user.id]
   );
-  return { ok: true, model: { id, name } };
+  return { ok: true, model: { id, name, vendor: vendorName, vendor_slug: vendorSlug } };
 }
 
 // ============ tier lists ============
