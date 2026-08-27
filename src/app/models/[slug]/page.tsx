@@ -16,6 +16,7 @@ import ReviewCard from "@/components/ReviewCard";
 import VendorLogo from "@/components/VendorLogo";
 import ScoreHistory from "@/components/ScoreHistory";
 import SpecGrid from "@/components/SpecGrid";
+import ExpandableText from "@/components/ExpandableText";
 
 export const dynamic = "force-dynamic";
 
@@ -75,17 +76,23 @@ export default async function ModelPage({
               ) : null}
             </p>
           </div>
-          <VoteButtons
-            modelId={model.id}
-            netScore={stats.net_score}
-            userVote={userVotes[model.id] ?? 0}
-            signedIn={!!user}
-            size="lg"
-          />
+          <div className="flex flex-col items-end gap-2">
+            <VoteButtons
+              modelId={model.id}
+              netScore={stats.net_score}
+              userVote={userVotes[model.id] ?? 0}
+              signedIn={!!user}
+              size="lg"
+            />
+            <Link
+              href={`/compare?a=${model.slug}`}
+              className="whitespace-nowrap rounded-sm border border-edge px-2.5 py-1 text-xs text-muted hover:border-muted hover:text-foreground"
+            >
+              Compare
+            </Link>
+          </div>
         </div>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-foreground/90 [overflow-wrap:anywhere] line-clamp-4 sm:line-clamp-none">
-          {plainDescription(model.description)}
-        </p>
+        <ExpandableText text={plainDescription(model.description)} />
         <div className="mt-4">
           <SpecGrid model={model} />
         </div>

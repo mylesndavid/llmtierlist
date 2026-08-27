@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/tiers", label: "Official tier list" },
   { href: "/tierlists", label: "Community lists" },
   { href: "/models", label: "Models" },
+  { href: "/compare", label: "Compare models" },
 ];
 
 export default function MobileNav() {
