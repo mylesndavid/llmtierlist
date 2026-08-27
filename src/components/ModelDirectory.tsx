@@ -116,9 +116,14 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
               className="absolute inset-0 z-0"
             />
             <div className="pointer-events-none relative z-10 flex items-start gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-sm bg-surface-2 p-1.5">
+              <Link
+                href={`/labs/${m.vendor_slug}`}
+                aria-label={`All ${m.vendor} models`}
+                title={`All ${m.vendor} models`}
+                className="pointer-events-auto grid h-10 w-10 shrink-0 place-items-center rounded-sm bg-surface-2 p-1.5 transition-colors hover:bg-surface"
+              >
                 <VendorLogo vendorSlug={m.vendor_slug} className="h-full w-full" />
-              </span>
+              </Link>
               <div className="min-w-0 flex-1">
                 <div className="truncate font-semibold group-hover:underline">{m.name}</div>
                 <div className="pointer-events-auto text-xs text-muted">

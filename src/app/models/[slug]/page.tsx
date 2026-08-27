@@ -49,9 +49,14 @@ export default async function ModelPage({
     <div className="space-y-8">
       <section className="border border-edge bg-surface p-4 sm:p-6">
         <div className="flex items-start gap-3 sm:gap-4">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-sm bg-surface-2 p-2 sm:h-16 sm:w-16 sm:p-3">
+          <Link
+            href={`/labs/${model.vendor_slug}`}
+            aria-label={`All ${model.vendor} models`}
+            title={`All ${model.vendor} models`}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-sm bg-surface-2 p-2 transition-colors hover:bg-surface sm:h-16 sm:w-16 sm:p-3"
+          >
             <VendorLogo vendorSlug={model.vendor_slug} className="h-full w-full" />
-          </span>
+          </Link>
           <div className="min-w-0 flex-1">
             <h1 className="break-words text-lg font-bold leading-tight sm:text-2xl">
               {model.name}

@@ -96,9 +96,14 @@ export default async function Home({
               <span className="w-8 shrink-0 text-center font-mono text-sm font-bold text-muted">
                 {i + 1}
               </span>
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-sm bg-surface-2 p-1.5">
+              <Link
+                href={`/labs/${m.vendor_slug}`}
+                aria-label={`All ${m.vendor} models`}
+                title={`All ${m.vendor} models`}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-sm bg-surface-2 p-1.5 transition-colors hover:bg-surface"
+              >
                 <VendorLogo vendorSlug={m.vendor_slug} className="h-full w-full" />
-              </span>
+              </Link>
               <Link href={`/models/${m.slug}`} className="min-w-0 flex-1">
                 <div className="truncate font-semibold hover:underline">{m.name}</div>
                 <div className="truncate text-xs text-muted">{m.vendor}</div>
