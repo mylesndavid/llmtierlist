@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ModelWithStats } from "@/lib/types";
-import { formatContextWindow, plainDescription } from "@/lib/tiers";
+import { formatContextWindow } from "@/lib/tiers";
 import VoteButtons from "./VoteButtons";
 import StarRating from "./StarRating";
 import VendorLogo from "./VendorLogo";
@@ -19,6 +19,7 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
   const [vendor, setVendor] = useState("all");
   const [license, setLicense] = useState("all");
   const [maxAgeMonths, setMaxAgeMonths] = useState<number | null>(12);
+  const [visible, setVisible] = useState(48);
 
   const vendors = useMemo(
     () => [...new Set(models.map((m) => m.vendor))].sort(),
@@ -44,6 +45,8 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
     })
     .sort((a, b) => (b.release_date ?? "").localeCompare(a.release_date ?? ""));
 
+  const shown = filtered.slice(0, visible);
+
   const selectCls =
     "rounded-sm border border-edge bg-surface px-3 py-2 text-sm outline-none focus:border-muted";
 
@@ -52,24 +55,44 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
       <div className="flex flex-wrap gap-2">
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setVisible(48);
+          }}
           placeholder="Search models…"
           className={`${selectCls} flex-1 min-w-48 placeholder:text-muted`}
         />
-        <select value={vendor} onChange={(e) => setVendor(e.target.value)} className={selectCls}>
+        <select
+          value={vendor}
+          onChange={(e) => {
+            setVendor(e.target.value);
+            setVisible(48);
+          }}
+          className={selectCls}
+        >
           <option value="all">All vendors</option>
           {vendors.map((v) => (
             <option key={v} value={v}>{v}</option>
           ))}
         </select>
-        <select value={license} onChange={(e) => setLicense(e.target.value)} className={selectCls}>
+        <select
+          value={license}
+          onChange={(e) => {
+            setLicense(e.target.value);
+            setVisible(48);
+          }}
+          className={selectCls}
+        >
           <option value="all">Any license</option>
           <option value="proprietary">Proprietary</option>
           <option value="open-weights">Open weights</option>
         </select>
         <select
           value={maxAgeMonths ?? "all"}
-          onChange={(e) => setMaxAgeMonths(e.target.value === "all" ? null : Number(e.target.value))}
+          onChange={(e) => {
+            setMaxAgeMonths(e.target.value === "all" ? null : Number(e.target.value));
+            setVisible(48);
+          }}
           className={selectCls}
         >
           <option value="3">Last 3 months</option>
@@ -82,7 +105,7 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((m) => (
+        {shown.map((m) => (
           <div
             key={m.id}
             className="flex min-w-0 flex-col gap-3 border border-edge bg-surface p-4 transition-colors hover:border-muted"
@@ -104,7 +127,7 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
                 signedIn={signedIn}
               />
             </div>
-            <p className="line-clamp-2 text-sm text-muted [overflow-wrap:anywhere]">{plainDescription(m.description)}</p>
+            <p className="line-clamp-2 text-sm text-muted [overflow-wrap:anywhere]">{m.description}</p>
             <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted">
               <span className="border border-edge px-2 py-0.5">
                 {m.license === "open-weights" ? "Open weights" : "Proprietary"}
@@ -128,6 +151,15 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
           </div>
         ))}
       </div>
+      {filtered.length > shown.length && (
+        <button
+          type="button"
+          onClick={() => setVisible((v) => v + 48)}
+          className="w-full rounded-sm border border-edge bg-surface px-4 py-3 text-sm font-medium text-muted hover:border-muted hover:text-foreground"
+        >
+          Show more ({filtered.length - shown.length} left)
+        </button>
+      )}
       {filtered.length === 0 && (
         <p className="py-10 text-center text-muted">No models match your filters.</p>
       )}

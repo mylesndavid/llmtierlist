@@ -1,4 +1,5 @@
 import { d1Query } from "./d1";
+import { cachedJson, invalidateJson } from "./edgeCache";
 import { getSessionUser } from "./auth";
 import { voterNetworkHash } from "./anon";
 import {
@@ -50,21 +51,28 @@ const MODEL_SELECT = `
          s.placement_count, s.avg_tier_value
   from models m left join model_stats s on s.model_id = m.id`;
 
-// Per-isolate cache for the hot catalog query (417 rows + stats aggregation).
-// Busted by write actions in the same isolate; other isolates age out in 30s.
+// Two-layer cache for the hot catalog query (565 rows + stats aggregation):
+// per-isolate memory first, then a colo-wide cache so cold isolates skip D1.
+const MODELS_CACHE_KEY = "models-with-stats-v1";
+const MODELS_TTL_S = 60;
 let modelsCache: { data: ModelWithStats[]; ts: number } | null = null;
 
 export function bustModelsCache() {
   modelsCache = null;
+  void invalidateJson(MODELS_CACHE_KEY);
 }
 
 /** All models except service-tier duplicates (:free/:batch). Includes thinking variants. */
 export async function getModelsWithStats(): Promise<ModelWithStats[]> {
-  if (modelsCache && Date.now() - modelsCache.ts < 30_000) return modelsCache.data;
-  const rows = await d1Query<ModelRow>(
-    `${MODEL_SELECT} where coalesce(m.variant, '') != 'service' order by m.name`
-  );
-  const data = rows.map(withStats);
+  if (modelsCache && Date.now() - modelsCache.ts < MODELS_TTL_S * 1000) {
+    return modelsCache.data;
+  }
+  const data = await cachedJson<ModelWithStats[]>(MODELS_CACHE_KEY, MODELS_TTL_S, async () => {
+    const rows = await d1Query<ModelRow>(
+      `${MODEL_SELECT} where coalesce(m.variant, '') != 'service' order by m.name`
+    );
+    return rows.map(withStats);
+  });
   modelsCache = { data, ts: Date.now() };
   return data;
 }
@@ -281,6 +289,10 @@ export interface SiteStats {
 }
 
 export async function getSiteStats(): Promise<SiteStats> {
+  return cachedJson<SiteStats>("site-stats-v1", 30, loadSiteStats);
+}
+
+async function loadSiteStats(): Promise<SiteStats> {
   const rows = await d1Query<SiteStats>(
     `select
        (select count(*) from tier_lists where is_public = 1) as list_count,

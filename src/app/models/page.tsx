@@ -1,16 +1,24 @@
 import { getCurrentUser, getBaseModelsWithStats, getUserVotes } from "@/lib/data";
 import ModelDirectory from "@/components/ModelDirectory";
+import { plainDescription } from "@/lib/tiers";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Models" };
 
 export default async function ModelsPage() {
-  const [models, userVotes, user] = await Promise.all([
+  const [allModels, userVotes, user] = await Promise.all([
     getBaseModelsWithStats(),
     getUserVotes(),
     getCurrentUser(),
   ]);
+
+  // The directory filters client-side, so every model crosses the wire —
+  // ship only what a card renders (full blurbs live on the model page).
+  const models = allModels.map((m) => ({
+    ...m,
+    description: plainDescription(m.description).slice(0, 150),
+  }));
 
   return (
     <div className="space-y-6">
