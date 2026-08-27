@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Model } from "@/lib/types";
-import { formatContextWindow, formatParams, formatPrice, modalityList } from "@/lib/tiers";
+import { formatContextWindow, formatPrice, modalityList, paramsDetail } from "@/lib/tiers";
 import ModalityIcon from "./ModalityIcons";
 
 function Cell({ label, children }: { label: string; children: React.ReactNode }) {
@@ -19,7 +19,13 @@ function Cell({ label, children }: { label: string; children: React.ReactNode })
 export default function SpecGrid({ model }: { model: Model }) {
   const inputs = modalityList(model.input_modalities);
   const outputs = modalityList(model.output_modalities);
-  const params = formatParams(model.params_b, model.active_params_b);
+  const totalParams =
+    model.params_b == null
+      ? null
+      : model.params_b >= 1000
+        ? `${(model.params_b / 1000).toFixed(model.params_b % 1000 === 0 ? 0 : 1)}T`
+        : `${model.params_b}B`;
+  const detail = paramsDetail(model);
   const hasPrice = model.price_in != null || model.price_out != null;
 
   return (
@@ -45,12 +51,19 @@ export default function SpecGrid({ model }: { model: Model }) {
       <div className="grid grid-cols-2 gap-2">
         <Cell label="Context">{formatContextWindow(model.context_window)}</Cell>
         <Cell label="Parameters">
-          {params ? (
+          {totalParams ? (
             <>
-              {params}
-              {model.is_moe ? (
-                <span className="ml-1.5 text-xs font-normal text-muted">MoE</span>
-              ) : null}
+              <span className="flex items-baseline gap-1.5">
+                {totalParams}
+                {model.is_moe ? (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+                    MoE
+                  </span>
+                ) : null}
+              </span>
+              {detail && (
+                <span className="mt-0.5 block text-[11px] font-normal text-muted">{detail}</span>
+              )}
             </>
           ) : (
             <span className="text-muted">Undisclosed</span>

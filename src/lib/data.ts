@@ -48,7 +48,7 @@ const MODEL_SELECT = `
   select m.id, m.slug, m.name, m.vendor, m.vendor_slug, m.description, m.license,
          m.release_date, m.context_window, m.base_model_id, m.variant,
          m.price_in, m.price_out, m.input_modalities, m.output_modalities,
-         m.params_b, m.active_params_b, m.is_moe, m.hf_id,
+         m.params_b, m.active_params_b, m.is_moe, m.hf_id, m.experts, m.experts_active,
          s.upvotes, s.downvotes, s.net_score, s.review_count, s.avg_rating,
          s.placement_count, s.avg_tier_value
   from models m left join model_stats s on s.model_id = m.id`;

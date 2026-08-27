@@ -62,6 +62,8 @@ export interface Model {
   active_params_b: number | null;
   is_moe: number;
   hf_id: string | null;
+  experts: number | null;
+  experts_active: number | null;
 }
 
 export interface ModelStats {

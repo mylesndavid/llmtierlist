@@ -1,4 +1,5 @@
 import { getCurrentUser, getBaseModelsWithStats, getUserVotes } from "@/lib/data";
+import { Suspense } from "react";
 import ModelDirectory from "@/components/ModelDirectory";
 import { plainDescription } from "@/lib/tiers";
 
@@ -28,7 +29,9 @@ export default async function ModelsPage() {
           Every model on the site. Vote, review, and rank them.
         </p>
       </div>
-      <ModelDirectory models={models} userVotes={userVotes} signedIn={!!user} />
+      <Suspense fallback={null}>
+        <ModelDirectory models={models} userVotes={userVotes} signedIn={!!user} />
+      </Suspense>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser, getLab, getLabModels, getUserVotes } from "@/lib/data";
+import { Suspense } from "react";
 import ModelDirectory from "@/components/ModelDirectory";
 import VendorLogo from "@/components/VendorLogo";
 import { plainDescription } from "@/lib/tiers";
@@ -71,7 +72,9 @@ export default async function LabPage({ params }: { params: Promise<{ slug: stri
         </div>
       </section>
 
-      <ModelDirectory models={trimmed} userVotes={userVotes} signedIn={!!user} />
+      <Suspense fallback={null}>
+        <ModelDirectory models={trimmed} userVotes={userVotes} signedIn={!!user} />
+      </Suspense>
 
       <Link href="/models" className="inline-block text-sm text-muted underline hover:text-foreground">
         ← All models

@@ -132,19 +132,40 @@ function detectMoe(model, activeParams) {
  * far better than guessing from the model name. Returns billions.
  */
 async function hfParams(repo) {
+  const out = { params_b: null, experts: null, experts_active: null, active_params_b: null };
   try {
     const res = await fetch(`https://huggingface.co/api/models/${repo}`, {
       headers: { "User-Agent": "llmtierlist.com sync" },
     });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const total = data?.safetensors?.total;
-    if (!Number.isFinite(total) || total <= 0) return null;
-    const billions = total / 1e9;
-    return Math.round(billions * 10) / 10;
-  } catch {
-    return null;
-  }
+    if (res.ok) {
+      const data = await res.json();
+      const total = data?.safetensors?.total;
+      if (Number.isFinite(total) && total > 0) {
+        out.params_b = Math.round((total / 1e9) * 10) / 10;
+      }
+    }
+  } catch {}
+
+  // Repo names often encode the MoE split the OpenRouter id omits
+  // ("…-30B-A3B" -> 30B total, 3B active).
+  const fromName = parseParams(repo, "");
+  if (fromName.active_params_b) out.active_params_b = fromName.active_params_b;
+  if (!out.params_b && fromName.params_b) out.params_b = fromName.params_b;
+
+  try {
+    const cfg = await fetch(`https://huggingface.co/${repo}/raw/main/config.json`, {
+      headers: { "User-Agent": "llmtierlist.com sync" },
+    });
+    if (cfg.ok) {
+      const c = await cfg.json();
+      const experts = c.num_experts ?? c.n_routed_experts ?? c.num_local_experts ?? null;
+      const active = c.num_experts_per_tok ?? c.num_experts_per_token ?? null;
+      if (Number.isFinite(experts)) out.experts = experts;
+      if (Number.isFinite(active)) out.experts_active = active;
+    }
+  } catch {}
+
+  return out;
 }
 
 /** Run tasks with bounded concurrency so we stay polite to the HF API. */
@@ -210,6 +231,8 @@ for (const m of orModels) {
       return { ...p, is_moe: detectMoe(m, p.active_params_b) };
     })(),
     hf_id: m.hugging_face_id ?? null,
+    experts: null,
+    experts_active: null,
   });
 }
 
@@ -276,16 +299,56 @@ const withRepos = [...new Set(rows.filter((r) => r.hf_id).map((r) => r.hf_id))];
 console.log(`Fetching parameter counts for ${withRepos.length} Hugging Face repos…`);
 const paramsByRepo = new Map();
 const results = await mapLimit(withRepos, 8, async (repo) => [repo, await hfParams(repo)]);
-for (const [repo, params] of results) if (params) paramsByRepo.set(repo, params);
+for (const [repo, info] of results) if (info?.params_b || info?.experts) paramsByRepo.set(repo, info);
 let enriched = 0;
 for (const r of rows) {
-  const exact = r.hf_id ? paramsByRepo.get(r.hf_id) : null;
-  if (!exact) continue;
-  // keep the name-derived active count (HF reports totals only)
-  r.params_b = exact;
+  const info = r.hf_id ? paramsByRepo.get(r.hf_id) : null;
+  if (!info) continue;
+  if (info.params_b) r.params_b = info.params_b;
+  if (!r.active_params_b && info.active_params_b) r.active_params_b = info.active_params_b;
+  r.experts = info.experts;
+  r.experts_active = info.experts_active;
+  if (info.experts) r.is_moe = 1;
   enriched++;
 }
 console.log(`Parameter counts resolved for ${paramsByRepo.size} repos (${enriched} model rows).`);
+
+// -- reconcile aliases with their canonical sibling --------------------------
+// "…-latest", dated snapshots ("…-0731") and "~" mirrors are the same model as
+// the plain id, but OpenRouter often omits the HF link on them. Inherit specs
+// from the richest sibling in the same family rather than showing "undisclosed".
+function familyKey(id) {
+  return id
+    .replace(/^~/, "")
+    .replace(/[:#].*$/, "")
+    .replace(/-latest$/, "")
+    .replace(/-\d{4,8}$/, "")
+    .replace(/-(preview|exp|experimental)$/, "");
+}
+const bestByFamily = new Map();
+for (const r of rows) {
+  if (!r.params_b && !r.hf_id) continue;
+  const key = familyKey(r.id);
+  const current = bestByFamily.get(key);
+  const score = (r.params_b ? 2 : 0) + (r.hf_id ? 1 : 0);
+  const currentScore = current ? (current.params_b ? 2 : 0) + (current.hf_id ? 1 : 0) : -1;
+  if (score > currentScore) bestByFamily.set(key, r);
+}
+let inherited = 0;
+for (const r of rows) {
+  if (r.params_b) continue;
+  const donor = bestByFamily.get(familyKey(r.id));
+  if (!donor || donor === r) continue;
+  r.params_b = donor.params_b;
+  r.active_params_b = r.active_params_b ?? donor.active_params_b;
+  r.experts = r.experts ?? donor.experts;
+  r.experts_active = r.experts_active ?? donor.experts_active;
+  r.is_moe = r.is_moe || donor.is_moe;
+  r.hf_id = r.hf_id ?? donor.hf_id;
+  if (donor.hf_id && r.license !== "open-weights") r.license = "open-weights";
+  inherited++;
+}
+console.log(`Inherited specs for ${inherited} alias/snapshot rows from their family.`);
 
 // A model can be retired upstream while a new entry claims its slug (e.g. a
 // real ":thinking" SKU dropped and our synthetic one takes over). Free those
@@ -306,15 +369,16 @@ for (const row of existing) {
   console.log(`Freed slug "${row.slug}" from retired ${row.id} -> ${freed}`);
 }
 
-// 19 params per row, D1 caps at 100 params per query -> 5 rows per batch
-const BATCH = 5;
+// 21 params per row, D1 caps at 100 params per query -> 4 rows per batch
+const BATCH = 4;
 for (let i = 0; i < rows.length; i += BATCH) {
   const batch = rows.slice(i, i + BATCH);
   await d1(
     `insert into models (id, slug, name, vendor, vendor_slug, description, license,
         release_date, context_window, base_model_id, variant, price_in, price_out,
-        input_modalities, output_modalities, params_b, active_params_b, is_moe, hf_id)
-     values ${batch.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
+        input_modalities, output_modalities, params_b, active_params_b, is_moe, hf_id,
+        experts, experts_active)
+     values ${batch.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
      on conflict (id) do update set
        slug = excluded.slug, name = excluded.name, vendor = excluded.vendor,
        vendor_slug = excluded.vendor_slug, description = excluded.description,
@@ -325,11 +389,12 @@ for (let i = 0; i < rows.length; i += BATCH) {
        input_modalities = excluded.input_modalities,
        output_modalities = excluded.output_modalities,
        params_b = excluded.params_b, active_params_b = excluded.active_params_b,
-       is_moe = excluded.is_moe, hf_id = excluded.hf_id`,
+       is_moe = excluded.is_moe, hf_id = excluded.hf_id,
+       experts = excluded.experts, experts_active = excluded.experts_active`,
     batch.flatMap((r) => [r.id, r.slug, r.name, r.vendor, r.vendor_slug, r.description,
       r.license, r.release_date, r.context_window, r.base_model_id, r.variant,
       r.price_in, r.price_out, r.input_modalities, r.output_modalities,
-      r.params_b, r.active_params_b, r.is_moe, r.hf_id])
+      r.params_b, r.active_params_b, r.is_moe, r.hf_id, r.experts, r.experts_active])
   );
   if ((i / BATCH) % 8 === 0) console.log(`Upserted ${Math.min(i + BATCH, rows.length)}/${rows.length}`);
 }

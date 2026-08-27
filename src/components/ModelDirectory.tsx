@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ModelWithStats } from "@/lib/types";
 import { formatContextWindow, formatParams, formatPrice } from "@/lib/tiers";
 import VoteButtons from "./VoteButtons";
@@ -15,11 +16,43 @@ interface Props {
 }
 
 export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
-  const [query, setQuery] = useState("");
-  const [vendor, setVendor] = useState("all");
-  const [license, setLicense] = useState("all");
-  const [maxAgeMonths, setMaxAgeMonths] = useState<number | null>(12);
+  // Filters live in the URL so back/forward and shared links restore them.
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [query, setQuery] = useState(params.get("q") ?? "");
+  const [vendor, setVendor] = useState(params.get("vendor") ?? "all");
+  const [license, setLicense] = useState(params.get("license") ?? "all");
+  const [maxAgeMonths, setMaxAgeMonths] = useState<number | null>(() => {
+    const raw = params.get("age");
+    if (raw === "all") return null;
+    return raw ? Number(raw) : 12;
+  });
   const [visible, setVisible] = useState(48);
+
+  const syncUrl = useCallback(
+    (next: Partial<{ q: string; vendor: string; license: string; age: string }>) => {
+      const sp = new URLSearchParams(params.toString());
+      for (const [key, value] of Object.entries(next)) {
+        const isDefault =
+          (key === "q" && !value) ||
+          (key !== "q" && (value === "all" || (key === "age" && value === "12")));
+        if (isDefault) sp.delete(key);
+        else sp.set(key, value as string);
+      }
+      const qs = sp.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [params, pathname, router]
+  );
+
+  // debounce the text field so typing doesn't spam history entries
+  useEffect(() => {
+    const t = setTimeout(() => syncUrl({ q: query }), 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   const vendors = useMemo(
     () => [...new Set(models.map((m) => m.vendor))].sort(),
@@ -67,6 +100,7 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
           onChange={(e) => {
             setVendor(e.target.value);
             setVisible(48);
+            syncUrl({ vendor: e.target.value });
           }}
           className={selectCls}
         >
@@ -80,6 +114,7 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
           onChange={(e) => {
             setLicense(e.target.value);
             setVisible(48);
+            syncUrl({ license: e.target.value });
           }}
           className={selectCls}
         >
@@ -92,6 +127,7 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
           onChange={(e) => {
             setMaxAgeMonths(e.target.value === "all" ? null : Number(e.target.value));
             setVisible(48);
+            syncUrl({ age: e.target.value });
           }}
           className={selectCls}
         >

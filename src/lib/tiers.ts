@@ -111,6 +111,22 @@ export function formatParams(total: number | null, active: number | null): strin
   return active ? `${fmt(total)} · ${fmt(active)} active` : fmt(total);
 }
 
+/** Secondary line under the parameter count: active params or expert routing. */
+export function paramsDetail(model: {
+  active_params_b: number | null;
+  experts: number | null;
+  experts_active: number | null;
+  is_moe: number;
+}): string | null {
+  const fmt = (b: number) => (b >= 1000 ? `${(b / 1000).toFixed(1)}T` : `${b}B`);
+  if (model.active_params_b) return `${fmt(model.active_params_b)} active`;
+  if (model.experts && model.experts_active) {
+    return `${model.experts_active} of ${model.experts} experts active`;
+  }
+  if (model.experts) return `${model.experts} experts`;
+  return model.is_moe ? "mixture of experts" : null;
+}
+
 export function modalityList(csv: string | null): string[] {
   return (csv ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 }
