@@ -32,6 +32,7 @@ export default function MobileNav() {
               <Link
                 key={l.href}
                 href={l.href}
+                prefetch
                 onClick={() => setOpen(false)}
                 className="block px-3 py-2.5 text-sm text-muted hover:bg-surface-2 hover:text-foreground"
               >
