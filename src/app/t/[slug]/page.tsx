@@ -221,7 +221,12 @@ export default async function TierListPage({
             <li key={ver.version}>
               <Link
                 href={`/t/${list.slug}?v=${ver.version}`}
-                title={new Date(ver.created_at.replace(" ", "T") + "Z").toLocaleString()}
+                title={[
+                  new Date(ver.created_at.replace(" ", "T") + "Z").toLocaleString(),
+                  changeFor(i),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
                 className={`inline-flex items-baseline gap-2 hover:text-foreground ${
                   viewing?.version === ver.version ? "text-foreground/80" : ""
                 }`}
@@ -229,7 +234,6 @@ export default async function TierListPage({
                 <span className="font-mono text-muted/60">v{ver.version}</span>
                 <span>
                   <TimeAgo iso={ver.created_at} />
-                  {changeFor(i) && <span className="text-muted/70"> · {changeFor(i)}</span>}
                 </span>
                 {viewing?.version === ver.version && (
                   <span className="text-muted/60">· viewing</span>
