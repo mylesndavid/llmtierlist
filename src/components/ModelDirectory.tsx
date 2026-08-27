@@ -30,6 +30,7 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
     return raw ? Number(raw) : 12;
   });
   const [visible, setVisible] = useState(48);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const syncUrl = useCallback(
     (next: Partial<{ q: string; vendor: string; license: string; age: string }>) => {
@@ -79,65 +80,87 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
     .sort((a, b) => (b.release_date ?? "").localeCompare(a.release_date ?? ""));
 
   const shown = filtered.slice(0, visible);
+  const activeFilters =
+    (vendor !== "all" ? 1 : 0) + (license !== "all" ? 1 : 0) + (maxAgeMonths !== 12 ? 1 : 0);
 
   const selectCls =
     "rounded-sm border border-edge bg-surface px-3 py-2 text-sm outline-none focus:border-muted";
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <input
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setVisible(48);
-          }}
-          placeholder="Search models…"
-          className={`${selectCls} flex-1 min-w-48 placeholder:text-muted`}
-        />
-        <select
-          value={vendor}
-          onChange={(e) => {
-            setVendor(e.target.value);
-            setVisible(48);
-            syncUrl({ vendor: e.target.value });
-          }}
-          className={selectCls}
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setVisible(48);
+            }}
+            placeholder="Search models…"
+            className={`${selectCls} min-w-0 flex-1 placeholder:text-muted`}
+          />
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className={`shrink-0 rounded-sm border px-3 py-2 text-sm font-medium transition-colors sm:hidden ${
+              activeFilters > 0 || filtersOpen
+                ? "border-foreground bg-foreground text-black"
+                : "border-edge text-muted"
+            }`}
+          >
+            Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
+          </button>
+        </div>
+
+        <div
+          className={`${filtersOpen ? "grid" : "hidden"} grid-cols-2 gap-2 sm:!grid sm:grid-cols-[repeat(3,auto)_1fr] sm:items-center`}
         >
-          <option value="all">All vendors</option>
-          {vendors.map((v) => (
-            <option key={v} value={v}>{v}</option>
-          ))}
-        </select>
-        <select
-          value={license}
-          onChange={(e) => {
-            setLicense(e.target.value);
-            setVisible(48);
-            syncUrl({ license: e.target.value });
-          }}
-          className={selectCls}
-        >
-          <option value="all">Any license</option>
-          <option value="proprietary">Proprietary</option>
-          <option value="open-weights">Open weights</option>
-        </select>
-        <select
-          value={maxAgeMonths ?? "all"}
-          onChange={(e) => {
-            setMaxAgeMonths(e.target.value === "all" ? null : Number(e.target.value));
-            setVisible(48);
-            syncUrl({ age: e.target.value });
-          }}
-          className={selectCls}
-        >
-          <option value="3">Last 3 months</option>
-          <option value="6">Last 6 months</option>
-          <option value="12">Last 12 months</option>
-          <option value="24">Last 2 years</option>
-          <option value="all">All time</option>
-        </select>
-        <span className="self-center text-xs text-muted">{filtered.length} models</span>
+          <select
+            value={vendor}
+            onChange={(e) => {
+              setVendor(e.target.value);
+              setVisible(48);
+              syncUrl({ vendor: e.target.value });
+            }}
+            className={selectCls}
+          >
+            <option value="all">All vendors</option>
+            {vendors.map((v) => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+          <select
+            value={license}
+            onChange={(e) => {
+              setLicense(e.target.value);
+              setVisible(48);
+              syncUrl({ license: e.target.value });
+            }}
+            className={selectCls}
+          >
+            <option value="all">Any license</option>
+            <option value="proprietary">Proprietary</option>
+            <option value="open-weights">Open weights</option>
+          </select>
+          <select
+            value={maxAgeMonths ?? "all"}
+            onChange={(e) => {
+              setMaxAgeMonths(e.target.value === "all" ? null : Number(e.target.value));
+              setVisible(48);
+              syncUrl({ age: e.target.value });
+            }}
+            className={`${selectCls} col-span-2 sm:col-span-1`}
+          >
+            <option value="3">Last 3 months</option>
+            <option value="6">Last 6 months</option>
+            <option value="12">Last 12 months</option>
+            <option value="24">Last 2 years</option>
+            <option value="all">All time</option>
+          </select>
+          <span className="hidden text-xs text-muted sm:inline">{filtered.length} models</span>
+        </div>
+
+        <p className="text-xs text-muted sm:hidden">{filtered.length} models</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
