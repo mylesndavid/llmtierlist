@@ -629,7 +629,7 @@ export default function TierListBuilder({
                         </button>
                         <span className="text-[11px] text-muted">logo:</span>
                         <div className="flex flex-wrap items-center gap-1">
-                          {["custom", ...vendors.slice(0, 12).map((v) => v.slug)].map((slug) => (
+                          {["custom", "cursor", ...vendors.slice(0, 11).map((v) => v.slug)].map((slug) => (
                             <button
                               key={slug}
                               type="button"

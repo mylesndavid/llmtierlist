@@ -237,10 +237,19 @@ export async function createCustomModel(rawName: string, rawVendor = "custom") {
   if (name.length < 2) return { error: "Give the model a name." };
 
   // Only labs we actually ship a logo for (or the generic mark).
+  const EXTRA_LABS: Record<string, string> = {
+    cursor: "Cursor",
+    windsurf: "Windsurf",
+    github: "GitHub",
+  };
   let vendorSlug = "custom";
   let vendorName = "Custom";
   const candidate = String(rawVendor ?? "").trim();
   if (candidate && candidate !== "custom" && /^[a-z0-9~._-]{1,40}$/i.test(candidate)) {
+    if (EXTRA_LABS[candidate]) {
+      vendorSlug = candidate;
+      vendorName = EXTRA_LABS[candidate];
+    }
     const known = await d1Query<{ vendor: string }>(
       "select vendor from models where vendor_slug = ? and is_custom = 0 limit 1",
       [candidate]

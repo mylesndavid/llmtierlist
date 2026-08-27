@@ -111,7 +111,7 @@ export default function ComparePicker({
 }) {
   const router = useRouter();
   const go = (nextA: string, nextB: string) =>
-    router.push(`/compare?a=${nextA}&b=${nextB}`, { scroll: false });
+    router.push(`/compare/${nextA}-vs-${nextB}`, { scroll: false });
 
   const byslug = useMemo(() => new Map(options.map((o) => [o.slug, o])), [options]);
 

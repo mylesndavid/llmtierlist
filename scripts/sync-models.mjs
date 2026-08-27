@@ -425,10 +425,12 @@ mkdirSync(outDir, { recursive: true });
 const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#9a9a9a" stroke-width="1.5"><rect x="4" y="7" width="16" height="12" rx="2"/><circle cx="9" cy="13" r="1.5" fill="#9a9a9a" stroke="none"/><circle cx="15" cy="13" r="1.5" fill="#9a9a9a" stroke="none"/><path d="M12 7V4M8 4h8"/></svg>`;
 writeFileSync(path.join(outDir, "default.svg"), FALLBACK_SVG);
 
-const vendorSlugs = [...new Set(rows.map((r) => r.vendor_slug))];
+// labs that aren't OpenRouter providers but are pickable for custom entries
+const EXTRA_LOGOS = { cursor: "cursor", windsurf: "windsurf", github: "github" };
+const vendorSlugs = [...new Set([...rows.map((r) => r.vendor_slug), ...Object.keys(EXTRA_LOGOS)])];
 let copied = 0, missing = [];
 for (const vs of vendorSlugs) {
-  const base = VENDORS[vs]?.[1] ?? vs;
+  const base = VENDORS[vs]?.[1] ?? EXTRA_LOGOS[vs] ?? vs;
   const candidate = [`${base}-color.svg`, `${base}.svg`]
     .map((f) => path.join(iconDir, f))
     .find(existsSync);

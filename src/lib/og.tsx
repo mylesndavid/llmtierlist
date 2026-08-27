@@ -320,6 +320,113 @@ export async function renderHomeOgPng(): Promise<Uint8Array> {
   return new Uint8Array(await image.arrayBuffer());
 }
 
+/** Share image for a head-to-head comparison. */
+export async function renderComparePng(aSlug: string, bSlug: string): Promise<Uint8Array | null> {
+  const { getBaseModelsWithStats } = await import("./data");
+  const { formatContextWindow, formatPrice, paramsDetail } = await import("./tiers");
+
+  const models = await getBaseModelsWithStats();
+  const bySlug = new Map(models.map((m) => [m.slug, m]));
+  const a = bySlug.get(aSlug);
+  const b = bySlug.get(bSlug);
+  if (!a || !b) return null;
+
+  const [siteLogo, logoA, logoB] = await Promise.all([
+    siteLogoDataUri(),
+    logoDataUri(a.vendor_slug),
+    logoDataUri(b.vendor_slug),
+  ]);
+
+  const totalParams = (m: typeof a) =>
+    m.params_b == null
+      ? "Undisclosed"
+      : m.params_b >= 1000
+        ? `${(m.params_b / 1000).toFixed(m.params_b % 1000 === 0 ? 0 : 1)}T`
+        : `${m.params_b}B`;
+
+  const rows: Array<[string, string, string, string?, string?]> = [
+    [
+      "In / out",
+      `${formatPrice(a.price_in)} / ${formatPrice(a.price_out)}`,
+      `${formatPrice(b.price_in)} / ${formatPrice(b.price_out)}`,
+      "per 1M tokens",
+      "per 1M tokens",
+    ],
+    ["Context", formatContextWindow(a.context_window), formatContextWindow(b.context_window)],
+    [
+      "Params",
+      totalParams(a),
+      totalParams(b),
+      paramsDetail(a) ?? undefined,
+      paramsDetail(b) ?? undefined,
+    ],
+    [
+      "Weights",
+      a.license === "open-weights" ? "Open" : "Closed",
+      b.license === "open-weights" ? "Open" : "Closed",
+    ],
+    [
+      "Votes",
+      a.stats.net_score > 0 ? `+${a.stats.net_score}` : `${a.stats.net_score}`,
+      b.stats.net_score > 0 ? `+${b.stats.net_score}` : `${b.stats.net_score}`,
+    ],
+  ];
+
+  const head = (m: typeof a, logo: string | null) => (
+    <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, flexBasis: 0, gap: 8, padding: "0 24px" }}>
+      {logo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logo} width={40} height={40} alt="" />
+      )}
+      <div style={{ display: "flex", color: "#f2f2f2", fontSize: 30, fontWeight: 700 }}>
+        {m.name.length > 24 ? `${m.name.slice(0, 23)}…` : m.name}
+      </div>
+      <div style={{ display: "flex", color: "#9a9a9a", fontSize: 18 }}>{m.vendor}</div>
+    </div>
+  );
+
+  const image = new ImageResponse(
+    (
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#121212", fontFamily: "sans-serif" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", paddingTop: 34, paddingBottom: 22 }}>
+          <div style={{ display: "flex", width: 150 }} />
+          {head(a, logoA)}
+          {head(b, logoB)}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+          {rows.map(([label, av, bv, asub, bsub]) => (
+            <div key={label} style={{ display: "flex", alignItems: "center", flexGrow: 1, borderTop: "1px solid #262626" }}>
+              <div style={{ display: "flex", width: 150, color: "#8b95a9", fontSize: 15, fontWeight: 600, textTransform: "uppercase", paddingLeft: 32 }}>
+                {label}
+              </div>
+              {[[av, asub], [bv, bsub]].map(([value, sub], i) => (
+                <div key={i} style={{ display: "flex", flexDirection: "column", flexGrow: 1, flexBasis: 0, padding: "0 24px" }}>
+                  <div style={{ display: "flex", color: "#f2f2f2", fontSize: 26, fontWeight: 700 }}>{value}</div>
+                  {sub && <div style={{ display: "flex", color: "#8b95a9", fontSize: 15 }}>{sub}</div>}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", height: 82, backgroundColor: "#2e2e2e", padding: "0 32px", gap: 14 }}>
+          {siteLogo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={siteLogo} width={44} height={44} alt="" />
+          )}
+          <div style={{ display: "flex", color: "#f2f2f2", fontSize: 30, fontWeight: 700 }}>llmtierlist.com</div>
+          <div style={{ display: "flex", marginLeft: "auto", color: "#9a9a9a", fontSize: 20 }}>
+            {a.name} vs {b.name}
+          </div>
+        </div>
+      </div>
+    ),
+    SIZE
+  );
+  return new Uint8Array(await image.arrayBuffer());
+}
+
 function toBase64(bytes: Uint8Array): string {
   let binary = "";
   const CHUNK = 0x8000;
