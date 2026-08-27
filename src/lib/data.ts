@@ -95,6 +95,21 @@ export async function getBuilderModels(): Promise<ModelWithStats[]> {
   return [...mine.map(withStats), ...catalog];
 }
 
+/** Fetch specific models by id, including custom entries the catalog hides. */
+export async function getModelsByIds(ids: string[]): Promise<ModelWithStats[]> {
+  if (ids.length === 0) return [];
+  const out: ModelWithStats[] = [];
+  for (let i = 0; i < ids.length; i += 60) {
+    const chunk = ids.slice(i, i + 60);
+    const rows = await d1Query<ModelRow>(
+      `${MODEL_SELECT} where m.id in (${chunk.map(() => "?").join(",")})`,
+      chunk
+    );
+    out.push(...rows.map(withStats));
+  }
+  return out;
+}
+
 export async function getModelBySlug(slug: string): Promise<ModelWithStats | null> {
   const rows = await d1Query<ModelRow>(`${MODEL_SELECT} where m.slug = ?`, [slug]);
   return rows.length ? withStats(rows[0]) : null;

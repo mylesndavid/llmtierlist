@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   getCurrentUser,
   getModelsWithStats,
+  getModelsByIds,
   getTierListBySlug,
   getTierListVersions,
 } from "@/lib/data";
@@ -70,7 +71,11 @@ export default async function TierListPage({
   const shownTiers = viewing?.tiers ?? list.tiers;
   const shownItems = viewing?.items ?? list.items;
 
-  const modelById = new Map(models.map((m) => [m.id, m]));
+  const modelById = new Map<string, Model>(models.map((m) => [m.id, m]));
+  // custom entries live outside the public catalog — pull them in by id
+  const missing = shownItems.map((i) => i.model_id).filter((id) => !modelById.has(id));
+  for (const m of await getModelsByIds(missing)) modelById.set(m.id, m);
+
   const placements = new Map<string, Model[]>(shownTiers.map((t) => [t.key, []]));
   for (const item of shownItems) {
     const model = modelById.get(item.model_id);
