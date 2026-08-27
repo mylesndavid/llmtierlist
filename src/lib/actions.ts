@@ -158,29 +158,21 @@ export async function castVote(modelId: string, value: 1 | -1 | 0) {
       const anonId = identity.id;
       const net = await voterNetworkHash();
       if (value === 0) {
-        await d1Query("delete from anon_votes where anon_id = ? and model_id = ?", [
-          anonId,
+        await d1Query("delete from anon_votes where ip_hash = ? and model_id = ?", [
+          net,
           modelId,
         ]);
       } else {
         if (!(await checkVoteRateLimit(anonId))) {
           return { error: "That's a lot of voting for one day — try again tomorrow." };
         }
-        // Fresh incognito windows mint new identities but share a network, so
-        // one anonymous vote per model per network per day actually counts.
-        const others = await d1Query<{ c: number }>(
-          "select count(*) c from anon_votes where model_id = ? and ip_hash = ? and anon_id != ?",
-          [modelId, net, anonId]
-        );
-        if ((others[0]?.c ?? 0) > 0) {
-          return {
-            error: "This network already voted on that model today — sign in to vote as yourself.",
-          };
-        }
+        // Keyed on the network, so a new/incognito browser updates the same
+        // vote rather than stacking another one.
         await d1Query(
-          `insert into anon_votes (anon_id, model_id, value, ip_hash) values (?, ?, ?, ?)
-           on conflict (anon_id, model_id) do update set value = excluded.value`,
-          [anonId, modelId, value, net]
+          `insert into anon_votes (ip_hash, model_id, anon_id, value) values (?, ?, ?, ?)
+           on conflict (ip_hash, model_id) do update set
+             value = excluded.value, anon_id = excluded.anon_id`,
+          [net, modelId, anonId, value]
         );
       }
     }
@@ -370,27 +362,19 @@ export async function castListVote(tierListId: string, value: 1 | -1 | 0) {
       const anonId = identity.id;
       const net = await voterNetworkHash();
       if (value === 0) {
-        await d1Query("delete from anon_list_votes where anon_id = ? and tier_list_id = ?", [
-          anonId,
+        await d1Query("delete from anon_list_votes where ip_hash = ? and tier_list_id = ?", [
+          net,
           tierListId,
         ]);
       } else {
         if (!(await checkVoteRateLimit(anonId))) {
           return { error: "That's a lot of voting for one day — try again tomorrow." };
         }
-        const others = await d1Query<{ c: number }>(
-          "select count(*) c from anon_list_votes where tier_list_id = ? and ip_hash = ? and anon_id != ?",
-          [tierListId, net, anonId]
-        );
-        if ((others[0]?.c ?? 0) > 0) {
-          return {
-            error: "This network already voted on that list today — sign in to vote as yourself.",
-          };
-        }
         await d1Query(
-          `insert into anon_list_votes (anon_id, tier_list_id, value, ip_hash) values (?, ?, ?, ?)
-           on conflict (anon_id, tier_list_id) do update set value = excluded.value`,
-          [anonId, tierListId, value, net]
+          `insert into anon_list_votes (ip_hash, tier_list_id, anon_id, value) values (?, ?, ?, ?)
+           on conflict (ip_hash, tier_list_id) do update set
+             value = excluded.value, anon_id = excluded.anon_id`,
+          [net, tierListId, anonId, value]
         );
       }
     }

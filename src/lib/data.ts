@@ -1,6 +1,6 @@
 import { d1Query } from "./d1";
 import { getSessionUser } from "./auth";
-import { getAnonId } from "./anon";
+import { voterNetworkHash } from "./anon";
 import {
   DEFAULT_TIERS,
   type Model,
@@ -105,14 +105,10 @@ export async function getUserVotes(): Promise<Record<string, number>> {
         "select model_id, value from votes where user_id = ?",
         [user.id]
       )
-    : await (async () => {
-        const anonId = await getAnonId(false);
-        if (!anonId) return [];
-        return d1Query<{ model_id: string; value: number }>(
-          "select model_id, value from anon_votes where anon_id = ?",
-          [anonId]
-        );
-      })();
+    : await d1Query<{ model_id: string; value: number }>(
+        "select model_id, value from anon_votes where ip_hash = ?",
+        [await voterNetworkHash()]
+      );
   return Object.fromEntries(rows.map((v) => [v.model_id, v.value]));
 }
 
@@ -173,15 +169,22 @@ export async function getTierListBySlug(
       [list.id]
     ),
     d1Query<{ score: number | null }>(
-      "select sum(value) as score from list_votes where tier_list_id = ?",
-      [list.id]
+      `select sum(value) as score from (
+         select value from list_votes where tier_list_id = ?
+         union all
+         select value from anon_list_votes where tier_list_id = ?
+       )`,
+      [list.id, list.id]
     ),
-    user
+    user?.onboarded
       ? d1Query<{ value: number }>(
           "select value from list_votes where tier_list_id = ? and user_id = ?",
           [list.id, user.id]
         )
-      : Promise.resolve([]),
+      : d1Query<{ value: number }>(
+          "select value from anon_list_votes where tier_list_id = ? and ip_hash = ?",
+          [list.id, await voterNetworkHash()]
+        ),
   ]);
   return {
     ...list,
@@ -202,7 +205,8 @@ export async function getPublicTierLists(limit = 30, query = ""): Promise<Browse
   const like = `%${q.replaceAll("%", "").replaceAll("_", "\\_")}%`;
   const rows = await d1Query<TierListRow & { score: number | null }>(
     `select tl.*, u.username, u.display_name, u.avatar_url,
-       (select sum(value) from list_votes lv where lv.tier_list_id = tl.id) as score
+       (select coalesce((select sum(value) from list_votes lv where lv.tier_list_id = tl.id), 0)
+             + coalesce((select sum(value) from anon_list_votes av where av.tier_list_id = tl.id), 0)) as score
      from tier_lists tl join users u on u.id = tl.user_id
      where tl.is_public = 1
        ${q ? "and (tl.title like ? or tl.description like ? or u.username like ? or u.display_name like ?)" : ""}

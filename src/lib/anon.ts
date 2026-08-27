@@ -94,9 +94,13 @@ async function clientIp(): Promise<string> {
   return "no-cf-ip";
 }
 
-/** Daily-salted hash of the real client IP, for per-network vote dedupe. */
+/**
+ * Stable (non-rotating) hash of the real client IP. This is the *owner* of an
+ * anonymous vote: opening a new browser or incognito window re-associates the
+ * existing vote instead of casting another one.
+ */
 export async function voterNetworkHash(): Promise<string> {
-  return (await ipBucket("net")).split(":")[1];
+  return hmac(`netv1|${await clientIp()}`);
 }
 
 export async function ipBucket(prefix: string): Promise<string> {
@@ -152,19 +156,20 @@ export async function checkActionRateLimit(key: string, limit: number): Promise<
 export async function claimAnonVotes(userId: string): Promise<void> {
   const anonId = await getAnonId(false);
   if (!anonId) return;
+  const net = await voterNetworkHash();
 
   await d1Query(
     `insert into votes (user_id, model_id, value)
-     select ?, model_id, value from anon_votes where anon_id = ?
+     select ?, model_id, value from anon_votes where ip_hash = ? and anon_id = ?
      on conflict (user_id, model_id) do nothing`,
-    [userId, anonId]
+    [userId, net, anonId]
   );
   await d1Query(
     `insert into list_votes (user_id, tier_list_id, value)
-     select ?, tier_list_id, value from anon_list_votes where anon_id = ?
+     select ?, tier_list_id, value from anon_list_votes where ip_hash = ? and anon_id = ?
      on conflict (user_id, tier_list_id) do nothing`,
-    [userId, anonId]
+    [userId, net, anonId]
   );
-  await d1Query("delete from anon_votes where anon_id = ?", [anonId]);
-  await d1Query("delete from anon_list_votes where anon_id = ?", [anonId]);
+  await d1Query("delete from anon_votes where ip_hash = ? and anon_id = ?", [net, anonId]);
+  await d1Query("delete from anon_list_votes where ip_hash = ? and anon_id = ?", [net, anonId]);
 }
