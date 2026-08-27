@@ -328,3 +328,21 @@ export async function getMyTierLists(): Promise<TierList[]> {
   );
   return rows.map(toTierList);
 }
+
+export interface ScorePoint {
+  day: string;
+  net_score: number;
+  upvotes: number;
+  downvotes: number;
+}
+
+/** Daily standing history for a model, oldest first. */
+export async function getModelScoreHistory(modelId: string, days = 90): Promise<ScorePoint[]> {
+  return d1Query<ScorePoint>(
+    `select day, net_score, upvotes, downvotes
+     from model_score_history
+     where model_id = ? and day >= date('now', ?)
+     order by day`,
+    [modelId, `-${days} days`]
+  );
+}

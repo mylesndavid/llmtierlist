@@ -3,6 +3,7 @@ import {
   getCurrentUser,
   getModelById,
   getModelBySlug,
+  getModelScoreHistory,
   getReviewsForModel,
   getUserVotes,
 } from "@/lib/data";
@@ -12,6 +13,7 @@ import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewCard from "@/components/ReviewCard";
 import VendorLogo from "@/components/VendorLogo";
+import ScoreHistory from "@/components/ScoreHistory";
 
 export const dynamic = "force-dynamic";
 
@@ -31,10 +33,11 @@ export default async function ModelPage({
     if (base) redirect(`/models/${base.slug}`);
   }
 
-  const [reviews, userVotes, user] = await Promise.all([
+  const [reviews, userVotes, user, history] = await Promise.all([
     getReviewsForModel(model.id),
     getUserVotes(),
     getCurrentUser(),
+    getModelScoreHistory(model.id),
   ]);
 
   const myReview = user ? reviews.find((r) => r.user_id === user.id) : undefined;
@@ -85,6 +88,8 @@ export default async function ModelPage({
           )}
         </div>
       </section>
+
+      <ScoreHistory points={history} live={stats.net_score} />
 
       <section className="space-y-4">
         <h2 className="text-xl font-bold">

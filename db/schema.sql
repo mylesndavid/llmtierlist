@@ -200,3 +200,15 @@ left join (
   join tier_lists tl on tl.id = i.tier_list_id and tl.is_public = 1
   group by i.model_id
 ) t on t.model_id = m.id;
+
+-- Daily snapshot of each tracked model's standing, for score-over-time charts.
+create table if not exists model_score_history (
+  model_id text not null references models (id) on delete cascade,
+  day text not null,
+  net_score integer not null default 0,
+  upvotes integer not null default 0,
+  downvotes integer not null default 0,
+  placements integer not null default 0,
+  primary key (model_id, day)
+);
+create index if not exists msh_day_idx on model_score_history (day);

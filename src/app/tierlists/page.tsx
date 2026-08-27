@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPublicTierLists } from "@/lib/data";
 import VendorLogo from "@/components/VendorLogo";
+import TimeAgo from "@/components/TimeAgo";
 
 export const dynamic = "force-dynamic";
 
@@ -119,12 +120,7 @@ export default async function TierListsPage({
                   <span className="font-medium text-foreground/80">
                     {list.profiles?.display_name || list.profiles?.username || "anonymous"}
                   </span>{" "}
-                  ·{" "}
-                  {new Date(list.updated_at).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+                  · <TimeAgo iso={list.created_at} />
                 </p>
               </div>
             </Link>

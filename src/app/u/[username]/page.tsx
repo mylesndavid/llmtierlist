@@ -8,6 +8,7 @@ import {
 } from "@/lib/data";
 import Avatar from "@/components/Avatar";
 import StarRating from "@/components/StarRating";
+import TimeAgo from "@/components/TimeAgo";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,12 @@ export default async function ProfilePage({
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-bold">Tier lists</h2>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-xl font-bold">Tier list timeline</h2>
+          {lists.length > 1 && (
+            <span className="text-xs text-muted">newest first — watch the takes change</span>
+          )}
+        </div>
         {lists.length === 0 ? (
           <p className="text-sm text-muted">
             No tier lists yet.
@@ -88,29 +94,38 @@ export default async function ProfilePage({
             )}
           </p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ol className="relative space-y-3 border-l border-edge pl-5">
             {lists.map((list) => (
-              <Link
-                key={list.id}
-                href={`/t/${list.slug}`}
-                className="border border-edge bg-surface p-4 transition-colors hover:border-muted"
-              >
-                <h3 className="truncate font-semibold">{list.title}</h3>
-                {list.description && (
-                  <p className="mt-1 line-clamp-2 text-sm text-muted">{list.description}</p>
-                )}
-                <p className="mt-3 text-xs text-muted">
-                  {!list.is_public && "Private · "}
-                  updated{" "}
-                  {new Date(list.updated_at + "Z").toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </p>
-              </Link>
+              <li key={list.id} className="relative">
+                <span className="absolute -left-[1.4rem] top-4 h-2 w-2 rounded-full bg-muted ring-4 ring-background" />
+                <Link
+                  href={`/t/${list.slug}`}
+                  className="block border border-edge bg-surface p-4 transition-colors hover:border-muted"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="truncate font-semibold">{list.title}</h3>
+                    <span className="shrink-0 text-xs text-muted">
+                      {!list.is_public && "Private · "}
+                      <TimeAgo iso={list.created_at} />
+                    </span>
+                  </div>
+                  {list.description && (
+                    <p className="mt-1 line-clamp-2 text-sm text-muted">{list.description}</p>
+                  )}
+                  <p className="mt-2 text-xs text-muted">
+                    {new Date(list.created_at.replace(" ", "T") + "Z").toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                    {list.updated_at !== list.created_at && (
+                      <> · edited <TimeAgo iso={list.updated_at} /></>
+                    )}
+                  </p>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ol>
         )}
       </section>
 

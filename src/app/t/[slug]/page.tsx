@@ -7,6 +7,7 @@ import FullscreenBoard from "@/components/FullscreenBoard";
 import { deleteTierList } from "@/lib/actions";
 import { redirect } from "next/navigation";
 import VoteButtons from "@/components/VoteButtons";
+import TimeAgo from "@/components/TimeAgo";
 import type { Model } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -90,12 +91,14 @@ export default async function TierListPage({
             ) : (
               author
             )}{" "}
-            · updated{" "}
-            {new Date(list.updated_at).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
+            · <TimeAgo iso={list.created_at} /> ·{" "}
+            <span className="text-muted">
+              {new Date(list.created_at.replace(" ", "T") + "Z").toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </span>
           </p>
           {list.description && (
             <p className="mt-2 max-w-2xl text-sm text-foreground/90">{list.description}</p>
