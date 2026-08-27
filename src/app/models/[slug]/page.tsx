@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
   getCurrentUser,
@@ -56,7 +57,9 @@ export default async function ModelPage({
               {model.name}
             </h1>
             <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted">
-              {model.vendor}
+              <Link href={`/labs/${model.vendor_slug}`} className="hover:text-foreground hover:underline">
+                {model.vendor}
+              </Link>
               <span className="border border-edge px-1.5 py-0.5 text-[10px] sm:text-xs">
                 {model.license === "open-weights" ? "Open weights" : "Proprietary"}
               </span>

@@ -127,6 +127,41 @@ function detectMoe(model, activeParams) {
   return /mixture[- ]of[- ]expert|\bmoe\b/.test(text) ? 1 : 0;
 }
 
+/**
+ * Exact parameter counts from the Hugging Face API for open-weights models —
+ * far better than guessing from the model name. Returns billions.
+ */
+async function hfParams(repo) {
+  try {
+    const res = await fetch(`https://huggingface.co/api/models/${repo}`, {
+      headers: { "User-Agent": "llmtierlist.com sync" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const total = data?.safetensors?.total;
+    if (!Number.isFinite(total) || total <= 0) return null;
+    const billions = total / 1e9;
+    return Math.round(billions * 10) / 10;
+  } catch {
+    return null;
+  }
+}
+
+/** Run tasks with bounded concurrency so we stay polite to the HF API. */
+async function mapLimit(items, limit, fn) {
+  const out = [];
+  let i = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (i < items.length) {
+        const idx = i++;
+        out[idx] = await fn(items[idx]);
+      }
+    })
+  );
+  return out;
+}
+
 function slugify(orId) {
   return orId
     .toLowerCase()
@@ -235,6 +270,22 @@ console.log(
   `Variants: ${rows.filter((r) => r.variant === "service").length} service tiers collapsed, ` +
   `${rows.filter((r) => r.variant === "thinking").length} thinking variants (${synthetic} synthesized).`
 );
+
+// -- exact parameter counts for open-weights models -------------------------
+const withRepos = [...new Set(rows.filter((r) => r.hf_id).map((r) => r.hf_id))];
+console.log(`Fetching parameter counts for ${withRepos.length} Hugging Face repos…`);
+const paramsByRepo = new Map();
+const results = await mapLimit(withRepos, 8, async (repo) => [repo, await hfParams(repo)]);
+for (const [repo, params] of results) if (params) paramsByRepo.set(repo, params);
+let enriched = 0;
+for (const r of rows) {
+  const exact = r.hf_id ? paramsByRepo.get(r.hf_id) : null;
+  if (!exact) continue;
+  // keep the name-derived active count (HF reports totals only)
+  r.params_b = exact;
+  enriched++;
+}
+console.log(`Parameter counts resolved for ${paramsByRepo.size} repos (${enriched} model rows).`);
 
 // A model can be retired upstream while a new entry claims its slug (e.g. a
 // real ":thinking" SKU dropped and our synthetic one takes over). Free those

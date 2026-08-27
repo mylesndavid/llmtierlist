@@ -121,7 +121,11 @@ export default function ModelDirectory({ models, userVotes, signedIn }: Props) {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="truncate font-semibold group-hover:underline">{m.name}</div>
-                <div className="text-xs text-muted">{m.vendor}</div>
+                <div className="pointer-events-auto text-xs text-muted">
+                  <Link href={`/labs/${m.vendor_slug}`} className="hover:text-foreground hover:underline">
+                    {m.vendor}
+                  </Link>
+                </div>
               </div>
               <div className="pointer-events-auto">
               <VoteButtons

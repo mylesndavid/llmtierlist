@@ -348,3 +348,58 @@ export async function getModelScoreHistory(modelId: string, days = 90): Promise<
     [modelId, `-${days} days`]
   );
 }
+
+export interface LabSummary {
+  vendor_slug: string;
+  vendor: string;
+  model_count: number;
+  open_count: number;
+  net_score: number;
+  latest_release: string | null;
+}
+
+export async function getLab(vendorSlug: string): Promise<LabSummary | null> {
+  const models = (await getModelsWithStats()).filter(
+    (m) => m.vendor_slug === vendorSlug && !m.variant
+  );
+  if (models.length === 0) return null;
+  return {
+    vendor_slug: vendorSlug,
+    vendor: models[0].vendor,
+    model_count: models.length,
+    open_count: models.filter((m) => m.license === "open-weights").length,
+    net_score: models.reduce((n, m) => n + m.stats.net_score, 0),
+    latest_release:
+      models
+        .map((m) => m.release_date)
+        .filter(Boolean)
+        .sort()
+        .at(-1) ?? null,
+  };
+}
+
+export async function getLabModels(vendorSlug: string): Promise<ModelWithStats[]> {
+  return (await getModelsWithStats())
+    .filter((m) => m.vendor_slug === vendorSlug && !m.variant)
+    .sort((a, b) => (b.release_date ?? "").localeCompare(a.release_date ?? ""));
+}
+
+export async function getLabs(): Promise<LabSummary[]> {
+  const models = (await getModelsWithStats()).filter((m) => !m.variant);
+  const byVendor = new Map<string, ModelWithStats[]>();
+  for (const m of models) {
+    const list = byVendor.get(m.vendor_slug) ?? [];
+    list.push(m);
+    byVendor.set(m.vendor_slug, list);
+  }
+  return [...byVendor.entries()]
+    .map(([slug, ms]) => ({
+      vendor_slug: slug,
+      vendor: ms[0].vendor,
+      model_count: ms.length,
+      open_count: ms.filter((m) => m.license === "open-weights").length,
+      net_score: ms.reduce((n, m) => n + m.stats.net_score, 0),
+      latest_release: ms.map((m) => m.release_date).filter(Boolean).sort().at(-1) ?? null,
+    }))
+    .sort((a, b) => b.model_count - a.model_count);
+}
