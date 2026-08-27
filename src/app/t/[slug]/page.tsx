@@ -151,35 +151,39 @@ export default async function TierListPage({
           )}
         </div>
       </div>
-      {versions.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 border border-edge bg-surface p-2.5 text-xs">
-          <span className="font-semibold uppercase tracking-wide text-muted">History</span>
+      <div className="flex flex-wrap items-center gap-2 border border-edge bg-surface p-2.5 text-xs">
+        <span className="font-semibold uppercase tracking-wide text-muted">History</span>
+        <Link
+          href={`/t/${list.slug}`}
+          className={`rounded-sm border px-2 py-1 ${
+            viewing
+              ? "border-edge text-muted hover:border-muted hover:text-foreground"
+              : "border-foreground bg-foreground font-semibold text-black"
+          }`}
+        >
+          Current · <TimeAgo iso={list.updated_at} />
+        </Link>
+        {versions.map((ver) => (
           <Link
-            href={`/t/${list.slug}`}
+            key={ver.version}
+            href={`/t/${list.slug}?v=${ver.version}`}
+            title={new Date(ver.created_at.replace(" ", "T") + "Z").toLocaleString()}
             className={`rounded-sm border px-2 py-1 ${
-              viewing
-                ? "border-edge text-muted hover:border-muted hover:text-foreground"
-                : "border-foreground bg-foreground font-semibold text-black"
+              viewing?.version === ver.version
+                ? "border-foreground bg-foreground font-semibold text-black"
+                : "border-edge text-muted hover:border-muted hover:text-foreground"
             }`}
           >
-            Current
+            v{ver.version} · <TimeAgo iso={ver.created_at} />
           </Link>
-          {versions.map((ver) => (
-            <Link
-              key={ver.version}
-              href={`/t/${list.slug}?v=${ver.version}`}
-              title={new Date(ver.created_at.replace(" ", "T") + "Z").toLocaleString()}
-              className={`rounded-sm border px-2 py-1 ${
-                viewing?.version === ver.version
-                  ? "border-foreground bg-foreground font-semibold text-black"
-                  : "border-edge text-muted hover:border-muted hover:text-foreground"
-              }`}
-            >
-              v{ver.version} · <TimeAgo iso={ver.created_at} />
-            </Link>
-          ))}
-        </div>
-      )}
+        ))}
+        <span className="rounded-sm border border-dashed border-edge px-2 py-1 text-muted">
+          created <TimeAgo iso={list.created_at} />
+        </span>
+        {versions.length === 0 && (
+          <span className="text-muted">— every edit is saved here as a version</span>
+        )}
+      </div>
 
       {viewing && (
         <p className="border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
