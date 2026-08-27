@@ -94,6 +94,11 @@ async function clientIp(): Promise<string> {
   return "no-cf-ip";
 }
 
+/** Daily-salted hash of the real client IP, for per-network vote dedupe. */
+export async function voterNetworkHash(): Promise<string> {
+  return (await ipBucket("net")).split(":")[1];
+}
+
 export async function ipBucket(prefix: string): Promise<string> {
   const day = new Date().toISOString().slice(0, 10);
   const digest = await crypto.subtle.digest(

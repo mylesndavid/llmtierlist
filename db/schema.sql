@@ -141,6 +141,7 @@ create table if not exists anon_votes (
   anon_id text not null,
   model_id text not null references models (id) on delete cascade,
   value integer not null check (value in (-1, 1)),
+  ip_hash text,                     -- daily-salted; one anon vote per network per model
   created_at text not null default (datetime('now')),
   primary key (anon_id, model_id)
 );
@@ -150,6 +151,7 @@ create table if not exists anon_list_votes (
   anon_id text not null,
   tier_list_id text not null references tier_lists (id) on delete cascade,
   value integer not null check (value in (-1, 1)),
+  ip_hash text,
   created_at text not null default (datetime('now')),
   primary key (anon_id, tier_list_id)
 );

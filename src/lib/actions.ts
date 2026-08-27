@@ -15,6 +15,7 @@ import {
   claimAnonVotes,
   getAnonId,
   getAnonIdentity,
+  voterNetworkHash,
 } from "./anon";
 import { type Tier, type TierDef } from "./types";
 
@@ -155,19 +156,31 @@ export async function castVote(modelId: string, value: 1 | -1 | 0) {
       // identity this same request created.
       if (identity.fresh) return { retry: true as const };
       const anonId = identity.id;
-      if (value !== 0 && !(await checkVoteRateLimit(anonId))) {
-        return { error: "That's a lot of voting for one day — try again tomorrow." };
-      }
+      const net = await voterNetworkHash();
       if (value === 0) {
         await d1Query("delete from anon_votes where anon_id = ? and model_id = ?", [
           anonId,
           modelId,
         ]);
       } else {
+        if (!(await checkVoteRateLimit(anonId))) {
+          return { error: "That's a lot of voting for one day — try again tomorrow." };
+        }
+        // Fresh incognito windows mint new identities but share a network, so
+        // one anonymous vote per model per network per day actually counts.
+        const others = await d1Query<{ c: number }>(
+          "select count(*) c from anon_votes where model_id = ? and ip_hash = ? and anon_id != ?",
+          [modelId, net, anonId]
+        );
+        if ((others[0]?.c ?? 0) > 0) {
+          return {
+            error: "This network already voted on that model today — sign in to vote as yourself.",
+          };
+        }
         await d1Query(
-          `insert into anon_votes (anon_id, model_id, value) values (?, ?, ?)
+          `insert into anon_votes (anon_id, model_id, value, ip_hash) values (?, ?, ?, ?)
            on conflict (anon_id, model_id) do update set value = excluded.value`,
-          [anonId, modelId, value]
+          [anonId, modelId, value, net]
         );
       }
     }
@@ -355,19 +368,29 @@ export async function castListVote(tierListId: string, value: 1 | -1 | 0) {
       if (!identity) return { error: "Couldn't record that vote." };
       if (identity.fresh) return { retry: true as const };
       const anonId = identity.id;
-      if (value !== 0 && !(await checkVoteRateLimit(anonId))) {
-        return { error: "That's a lot of voting for one day — try again tomorrow." };
-      }
+      const net = await voterNetworkHash();
       if (value === 0) {
         await d1Query("delete from anon_list_votes where anon_id = ? and tier_list_id = ?", [
           anonId,
           tierListId,
         ]);
       } else {
+        if (!(await checkVoteRateLimit(anonId))) {
+          return { error: "That's a lot of voting for one day — try again tomorrow." };
+        }
+        const others = await d1Query<{ c: number }>(
+          "select count(*) c from anon_list_votes where tier_list_id = ? and ip_hash = ? and anon_id != ?",
+          [tierListId, net, anonId]
+        );
+        if ((others[0]?.c ?? 0) > 0) {
+          return {
+            error: "This network already voted on that list today — sign in to vote as yourself.",
+          };
+        }
         await d1Query(
-          `insert into anon_list_votes (anon_id, tier_list_id, value) values (?, ?, ?)
+          `insert into anon_list_votes (anon_id, tier_list_id, value, ip_hash) values (?, ?, ?, ?)
            on conflict (anon_id, tier_list_id) do update set value = excluded.value`,
-          [anonId, tierListId, value]
+          [anonId, tierListId, value, net]
         );
       }
     }
