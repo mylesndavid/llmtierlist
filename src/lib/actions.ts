@@ -283,6 +283,38 @@ export async function saveTierList(payload: TierListPayload) {
       return { error: "Tier list not found." };
     }
     slug = existing[0].slug;
+
+    // Archive what the list looked like before this edit so its evolution
+    // stays browsable.
+    const [prevItems, prevMeta, versionRow] = await Promise.all([
+      d1Query<{ model_id: string; tier: string; tier_index: number; position: number }>(
+        "select model_id, tier, tier_index, position from tier_list_items where tier_list_id = ? order by tier_index, position",
+        [listId]
+      ),
+      d1Query<{ title: string; tiers: string | null }>(
+        "select title, tiers from tier_lists where id = ?",
+        [listId]
+      ),
+      d1Query<{ next: number }>(
+        "select coalesce(max(version), 0) + 1 as next from tier_list_versions where tier_list_id = ?",
+        [listId]
+      ),
+    ]);
+    if (prevItems.length > 0) {
+      await d1Query(
+        `insert into tier_list_versions (tier_list_id, version, title, tiers, items)
+         values (?, ?, ?, ?, ?)
+         on conflict (tier_list_id, version) do nothing`,
+        [
+          listId,
+          versionRow[0]?.next ?? 1,
+          prevMeta[0]?.title ?? "",
+          prevMeta[0]?.tiers ?? null,
+          JSON.stringify(prevItems),
+        ]
+      );
+    }
+
     await d1Query(
       `update tier_lists set title = ?, description = ?, is_public = ?, tiers = ?, rank_modes = ?,
        updated_at = datetime('now') where id = ?`,

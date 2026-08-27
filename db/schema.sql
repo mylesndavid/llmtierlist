@@ -220,3 +220,16 @@ create table if not exists model_score_history (
   primary key (model_id, day)
 );
 create index if not exists msh_day_idx on model_score_history (day);
+
+-- Snapshot of a tier list each time it is edited, so a list's evolution is
+-- browsable. `items` is a JSON array of {model_id, tier, tier_index, position}.
+create table if not exists tier_list_versions (
+  tier_list_id text not null references tier_lists (id) on delete cascade,
+  version integer not null,
+  title text not null default '',
+  tiers text,
+  items text not null,
+  created_at text not null default (datetime('now')),
+  primary key (tier_list_id, version)
+);
+create index if not exists tlv_list_idx on tier_list_versions (tier_list_id, version desc);

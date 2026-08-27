@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCurrentUser, getModelsWithStats, getTierListBySlug } from "@/lib/data";
+import {
+  getCurrentUser,
+  getModelsWithStats,
+  getTierListBySlug,
+  getTierListVersions,
+} from "@/lib/data";
 import TierBoard from "@/components/TierBoard";
 import ShareButton from "@/components/ShareButton";
 import FullscreenBoard from "@/components/FullscreenBoard";
@@ -44,20 +49,30 @@ export async function generateMetadata({
 
 export default async function TierListPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ v?: string }>;
 }) {
-  const { slug } = await params;
-  const [list, models, user] = await Promise.all([
-    getTierListBySlug(slug),
+  const [{ slug }, { v }, models, user] = await Promise.all([
+    params,
+    searchParams,
     getModelsWithStats(),
     getCurrentUser(),
   ]);
+  const list = await getTierListBySlug(slug);
   if (!list) notFound();
 
+  const versions = await getTierListVersions(list.id);
+  const viewing = v ? versions.find((ver) => String(ver.version) === v) : undefined;
+
+  // a past revision renders its own tiers and placements
+  const shownTiers = viewing?.tiers ?? list.tiers;
+  const shownItems = viewing?.items ?? list.items;
+
   const modelById = new Map(models.map((m) => [m.id, m]));
-  const placements = new Map<string, Model[]>(list.tiers.map((t) => [t.key, []]));
-  for (const item of list.items) {
+  const placements = new Map<string, Model[]>(shownTiers.map((t) => [t.key, []]));
+  for (const item of shownItems) {
     const model = modelById.get(item.model_id);
     if (model) placements.get(item.tier)?.push(model);
   }
@@ -136,8 +151,48 @@ export default async function TierListPage({
           )}
         </div>
       </div>
-      <FullscreenBoard title={list.title}>
-        <TierBoard placements={placements} tiers={list.tiers} />
+      {versions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border border-edge bg-surface p-2.5 text-xs">
+          <span className="font-semibold uppercase tracking-wide text-muted">History</span>
+          <Link
+            href={`/t/${list.slug}`}
+            className={`rounded-sm border px-2 py-1 ${
+              viewing
+                ? "border-edge text-muted hover:border-muted hover:text-foreground"
+                : "border-foreground bg-foreground font-semibold text-black"
+            }`}
+          >
+            Current
+          </Link>
+          {versions.map((ver) => (
+            <Link
+              key={ver.version}
+              href={`/t/${list.slug}?v=${ver.version}`}
+              title={new Date(ver.created_at.replace(" ", "T") + "Z").toLocaleString()}
+              className={`rounded-sm border px-2 py-1 ${
+                viewing?.version === ver.version
+                  ? "border-foreground bg-foreground font-semibold text-black"
+                  : "border-edge text-muted hover:border-muted hover:text-foreground"
+              }`}
+            >
+              v{ver.version} · <TimeAgo iso={ver.created_at} />
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {viewing && (
+        <p className="border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          Viewing an earlier version of this list, saved{" "}
+          <TimeAgo iso={viewing.created_at} />.{" "}
+          <Link href={`/t/${list.slug}`} className="underline">
+            Back to current
+          </Link>
+        </p>
+      )}
+
+      <FullscreenBoard title={viewing ? `${list.title} (v${viewing.version})` : list.title}>
+        <TierBoard placements={placements} tiers={shownTiers} />
       </FullscreenBoard>
     </div>
   );

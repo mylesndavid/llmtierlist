@@ -403,3 +403,33 @@ export async function getLabs(): Promise<LabSummary[]> {
     }))
     .sort((a, b) => b.model_count - a.model_count);
 }
+
+
+export interface TierListVersion {
+  version: number;
+  title: string;
+  tiers: TierDef[];
+  items: TierListItem[];
+  created_at: string;
+}
+
+/** Past revisions of a tier list, newest first. */
+export async function getTierListVersions(listId: string): Promise<TierListVersion[]> {
+  const rows = await d1Query<{
+    version: number;
+    title: string;
+    tiers: string | null;
+    items: string;
+    created_at: string;
+  }>(
+    "select version, title, tiers, items, created_at from tier_list_versions where tier_list_id = ? order by version desc",
+    [listId]
+  );
+  return rows.map((r) => ({
+    version: r.version,
+    title: r.title,
+    tiers: parseTiers(r.tiers),
+    items: (JSON.parse(r.items) as TierListItem[]) ?? [],
+    created_at: r.created_at,
+  }));
+}
