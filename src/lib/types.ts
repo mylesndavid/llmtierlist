@@ -40,6 +40,8 @@ export interface PublicProfile {
   list_count: number;
   review_count: number;
   vote_count: number;
+  upvotes_received: number;
+  net_received: number;
 }
 
 export interface Model {
