@@ -274,7 +274,19 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
     `select u.id, u.username, u.display_name, u.avatar_url, u.bio, u.created_at,
        (select count(*) from tier_lists tl where tl.user_id = u.id and tl.is_public = 1) as list_count,
        (select count(*) from reviews r where r.user_id = u.id) as review_count,
-       (select count(*) from votes v where v.user_id = u.id) as vote_count
+       (select count(*) from votes v where v.user_id = u.id) as vote_count,
+       (select coalesce(sum(case when x.value = 1 then 1 else 0 end), 0)
+          from (select value, tier_list_id from list_votes
+                union all
+                select value, tier_list_id from anon_list_votes) x
+          join tier_lists tl on tl.id = x.tier_list_id
+          where tl.user_id = u.id) as upvotes_received,
+       (select coalesce(sum(x.value), 0)
+          from (select value, tier_list_id from list_votes
+                union all
+                select value, tier_list_id from anon_list_votes) x
+          join tier_lists tl on tl.id = x.tier_list_id
+          where tl.user_id = u.id) as net_received
      from users u where u.username = ?`,
     [username]
   );
@@ -284,13 +296,17 @@ export async function getProfileByUsername(username: string): Promise<PublicProf
 export async function getTierListsByUser(
   userId: string,
   includePrivate: boolean
-): Promise<TierList[]> {
-  const rows = await d1Query<TierListRow>(
-    `select * from tier_lists where user_id = ? ${includePrivate ? "" : "and is_public = 1"}
-     order by updated_at desc`,
+): Promise<Array<TierList & { score: number }>> {
+  const rows = await d1Query<TierListRow & { score: number | null }>(
+    `select tl.*,
+       (coalesce((select sum(value) from list_votes lv where lv.tier_list_id = tl.id), 0)
+      + coalesce((select sum(value) from anon_list_votes av where av.tier_list_id = tl.id), 0)) as score
+     from tier_lists tl
+     where tl.user_id = ? ${includePrivate ? "" : "and tl.is_public = 1"}
+     order by tl.updated_at desc`,
     [userId]
   );
-  return rows.map(toTierList);
+  return rows.map((r) => ({ ...toTierList(r), score: r.score ?? 0 }));
 }
 
 export interface UserReview {

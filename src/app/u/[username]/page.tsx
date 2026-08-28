@@ -55,9 +55,11 @@ export default async function ProfilePage({
           <p className="text-sm text-muted">@{profile.username}</p>
           {profile.bio && <p className="mt-2 max-w-xl text-sm">{profile.bio}</p>}
           <p className="mt-2 text-xs text-muted">
+            <span className="font-semibold text-foreground">{profile.upvotes_received}</span>{" "}
+            {profile.upvotes_received === 1 ? "upvote" : "upvotes"} received ·{" "}
             {profile.list_count} tier {profile.list_count === 1 ? "list" : "lists"} ·{" "}
             {profile.review_count} {profile.review_count === 1 ? "review" : "reviews"} ·{" "}
-            {profile.vote_count} {profile.vote_count === 1 ? "vote" : "votes"} · joined{" "}
+            {profile.vote_count} {profile.vote_count === 1 ? "vote" : "votes"} cast · joined{" "}
             {new Date(profile.created_at + "Z").toLocaleDateString("en-US", {
               month: "short",
               year: "numeric",
@@ -104,8 +106,17 @@ export default async function ProfilePage({
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <h3 className="truncate font-semibold">{list.title}</h3>
-                    <span className="shrink-0 text-xs text-muted">
-                      {!list.is_public && "Private · "}
+                    <span className="flex shrink-0 items-baseline gap-2 text-xs text-muted">
+                      {list.score !== 0 && (
+                        <span
+                          className={`font-mono font-semibold ${
+                            list.score > 0 ? "text-emerald-400" : "text-rose-400"
+                          }`}
+                        >
+                          {list.score > 0 ? `+${list.score}` : list.score}
+                        </span>
+                      )}
+                      {!list.is_public && <span>Private</span>}
                       <TimeAgo iso={list.created_at} />
                     </span>
                   </div>
