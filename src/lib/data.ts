@@ -57,7 +57,7 @@ const MODEL_SELECT = `
 // Two-layer cache for the hot catalog query (565 rows + stats aggregation):
 // per-isolate memory first, then a colo-wide cache so cold isolates skip D1.
 const MODELS_CACHE_KEY = "models-with-stats-v1";
-const MODELS_TTL_S = 60;
+const MODELS_TTL_S = 20;
 let modelsCache: { data: ModelWithStats[]; ts: number } | null = null;
 
 export function bustModelsCache() {

@@ -71,8 +71,10 @@ export default function VoteButtons({ modelId, netScore, userVote, size = "sm", 
       if (result && "retry" in result && result.retry) result = await send();
       if (result && "error" in result && result.error) {
         setError(result.error as string);
-        router.refresh(); // drop the optimistic state
       }
+      // Always re-read from the server: another visitor may have voted since
+      // this page rendered, and a cached copy would snap the number back.
+      router.refresh();
     });
   }
 

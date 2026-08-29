@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
      * makes back-and-forth navigation instant; anything older re-fetches.
      */
     staleTimes: {
-      dynamic: 45,
+      dynamic: 15,
       static: 300,
     },
   },
