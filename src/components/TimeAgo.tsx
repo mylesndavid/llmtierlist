@@ -3,6 +3,9 @@ const MINUTE = 60, HOUR = 3600, DAY = 86400;
 /** Relative age plus the exact date on hover — tier lists are snapshots in time. */
 export default function TimeAgo({ iso, prefix = "" }: { iso: string; prefix?: string }) {
   const date = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
+  // Server component: the label is a snapshot taken when the page renders, and
+  // the exact timestamp is always available in the tooltip.
+  // eslint-disable-next-line react-hooks/purity
   const secs = Math.max(0, (Date.now() - date.getTime()) / 1000);
 
   let label: string;

@@ -14,11 +14,14 @@ function Field({
   current,
   options,
   onPick,
+  trigger,
 }: {
   label: string;
   current: Option | undefined;
   options: Option[];
   onPick: (slug: string) => void;
+  /** Render the card header as the control instead of a labelled select. */
+  trigger?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -45,22 +48,38 @@ function Field({
 
   return (
     <div ref={box} className="relative">
-      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted">
-        {label}
-      </label>
-      <button
-        type="button"
-        onClick={() => {
-          setOpen(!open);
-          setQuery("");
-        }}
-        className="flex w-full items-center justify-between gap-2 rounded-sm border border-edge bg-surface px-3 py-2 text-left text-sm hover:border-muted"
-      >
-        <span className="min-w-0 truncate font-medium">
-          {current ? current.name : "Choose a model"}
-        </span>
-        <span className="shrink-0 text-xs text-muted">▾</span>
-      </button>
+      {trigger ? (
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(!open);
+            setQuery("");
+          }}
+          aria-label={`Change ${label}`}
+          className="group/pick w-full rounded-sm text-left transition-colors hover:bg-surface-2/60"
+        >
+          {trigger}
+        </button>
+      ) : (
+        <>
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted">
+            {label}
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(!open);
+              setQuery("");
+            }}
+            className="flex w-full items-center justify-between gap-2 rounded-sm border border-edge bg-surface px-3 py-2 text-left text-sm hover:border-muted"
+          >
+            <span className="min-w-0 truncate font-medium">
+              {current ? current.name : "Choose a model"}
+            </span>
+            <span className="shrink-0 text-xs text-muted">▾</span>
+          </button>
+        </>
+      )}
 
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-sm border border-edge bg-surface shadow-xl shadow-black/60">
@@ -104,10 +123,14 @@ export default function ComparePicker({
   options,
   a,
   b,
+  triggerA,
+  triggerB,
 }: {
   options: Option[];
   a: string;
   b: string;
+  triggerA?: React.ReactNode;
+  triggerB?: React.ReactNode;
 }) {
   const router = useRouter();
   const go = (nextA: string, nextB: string) =>
@@ -115,19 +138,22 @@ export default function ComparePicker({
 
   const byslug = useMemo(() => new Map(options.map((o) => [o.slug, o])), [options]);
 
+  const headless = Boolean(triggerA || triggerB);
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className={headless ? "grid grid-cols-2 gap-2 sm:gap-4" : "grid grid-cols-2 gap-2"}>
       <Field
         label="Model A"
         current={byslug.get(a)}
         options={options}
         onPick={(slug) => go(slug, b)}
+        trigger={triggerA}
       />
       <Field
         label="Model B"
         current={byslug.get(b)}
         options={options}
         onPick={(slug) => go(a, slug)}
+        trigger={triggerB}
       />
     </div>
   );

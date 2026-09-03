@@ -56,6 +56,23 @@ function Score({ m }: { m: ModelWithStats }) {
   );
 }
 
+function ModelHead({ m }: { m: ModelWithStats }) {
+  return (
+    <div className="min-w-0 p-1">
+      <span className="mb-1.5 grid h-8 w-8 place-items-center rounded-sm bg-surface p-1.5">
+        <VendorLogo vendorSlug={m.vendor_slug} className="h-full w-full" />
+      </span>
+      <div className="flex items-start gap-1">
+        <span className="min-w-0 text-sm font-bold leading-tight [overflow-wrap:anywhere]">
+          {m.name}
+        </span>
+        <span className="mt-0.5 shrink-0 text-[10px] text-muted">▾</span>
+      </div>
+      <div className="truncate text-xs text-muted">{m.vendor}</div>
+    </div>
+  );
+}
+
 function Modalities({ m }: { m: ModelWithStats }) {
   const inputs = modalityList(m.input_modalities);
   const outputs = modalityList(m.output_modalities);
@@ -134,30 +151,21 @@ export default async function ComparePairPage({
         </p>
       </div>
 
-      <Suspense fallback={null}>
-        <ComparePicker options={options} a={a.slug} b={b.slug} />
-      </Suspense>
-
       <div className="border border-edge bg-surface">
         {/* headers */}
-        <div className="grid grid-cols-[4.5rem_1fr_1fr] gap-2 border-b border-edge bg-surface-2/40 px-3 py-3 sm:grid-cols-[7rem_1fr_1fr] sm:gap-4 sm:px-4">
-          <div />
-          {[a, b].map((m) => (
-            <div key={m.id} className="min-w-0">
-              <Link href={`/labs/${m.vendor_slug}`} className="mb-1.5 block h-8 w-8">
-                <span className="grid h-8 w-8 place-items-center rounded-sm bg-surface p-1.5">
-                  <VendorLogo vendorSlug={m.vendor_slug} className="h-full w-full" />
-                </span>
-              </Link>
-              <Link
-                href={`/models/${m.slug}`}
-                className="block text-sm font-bold leading-tight hover:underline [overflow-wrap:anywhere]"
-              >
-                {m.name}
-              </Link>
-              <div className="truncate text-xs text-muted">{m.vendor}</div>
-            </div>
-          ))}
+        <div className="grid grid-cols-[4.5rem_1fr] gap-2 border-b border-edge bg-surface-2/40 px-3 py-3 sm:grid-cols-[7rem_1fr] sm:gap-4 sm:px-4">
+          <div className="self-end pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+            tap to swap
+          </div>
+          <Suspense fallback={null}>
+            <ComparePicker
+              options={options}
+              a={a.slug}
+              b={b.slug}
+              triggerA={<ModelHead m={a} />}
+              triggerB={<ModelHead m={b} />}
+            />
+          </Suspense>
         </div>
 
         <Row label="In / out" a={price(a)} b={price(b)} />
@@ -259,9 +267,15 @@ export default async function ComparePairPage({
         </div>
       </div>
 
-      <p className="text-xs text-muted">
-        Shareable link: llmtierlist.com/compare/{a.slug}-vs-{b.slug}
-      </p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+        <Link href={`/models/${a.slug}`} className="underline hover:text-foreground">
+          {a.name} page
+        </Link>
+        <Link href={`/models/${b.slug}`} className="underline hover:text-foreground">
+          {b.name} page
+        </Link>
+        <span className="ml-auto">llmtierlist.com/compare/{a.slug}-vs-{b.slug}</span>
+      </div>
     </div>
   );
 }

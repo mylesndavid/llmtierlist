@@ -248,6 +248,12 @@ export default function TierListBuilder({
 
   const hiddenCount = hidden.size;
 
+  // thinking variants suppressed purely by the Combined/Separate setting
+  const thinkingAvailable = (containers.pool ?? []).filter((id) => {
+    const m = modelById.get(id);
+    return m?.variant === "thinking";
+  }).length;
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } })
@@ -682,6 +688,18 @@ export default function TierListBuilder({
             />
             <button
               type="button"
+              onClick={() => setRankModes(!rankModes)}
+              title="Rank a model's thinking mode as its own entry"
+              className={`shrink-0 rounded-sm border px-2.5 py-2 text-xs font-medium transition-colors ${
+                rankModes
+                  ? "border-foreground bg-foreground text-black"
+                  : "border-edge text-muted hover:border-muted hover:text-foreground"
+              }`}
+            >
+              Thinking modes{!rankModes && thinkingAvailable > 0 ? ` (${thinkingAvailable})` : ""}
+            </button>
+            <button
+              type="button"
               onClick={() => setFiltersOpen(!filtersOpen)}
               className={`rounded-sm border px-3 py-1.5 text-sm font-medium transition-colors ${
                 activeFilterCount > 0 || filtersOpen
@@ -737,30 +755,6 @@ export default function TierListBuilder({
                         onClick={() => setLicenseFilter(value)}
                         className={`px-3 py-1.5 font-medium transition-colors ${
                           licenseFilter === value
-                            ? "bg-foreground text-black"
-                            : "text-muted hover:text-foreground"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted">Thinking modes</span>
-                  <div className="flex overflow-hidden rounded-sm border border-edge">
-                    {(
-                      [
-                        [false, "Combined"],
-                        [true, "Separate"],
-                      ] as const
-                    ).map(([value, label]) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => setRankModes(value)}
-                        className={`px-3 py-1.5 font-medium transition-colors ${
-                          rankModes === value
                             ? "bg-foreground text-black"
                             : "text-muted hover:text-foreground"
                         }`}

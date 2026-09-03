@@ -477,3 +477,33 @@ export async function getTierListVersions(listId: string): Promise<TierListVersi
     created_at: r.created_at,
   }));
 }
+
+export interface UserSearchResult {
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  list_count: number;
+  upvotes_received: number;
+}
+
+/** People search: by username or display name, most-upvoted first. */
+export async function searchUsers(query = "", limit = 40): Promise<UserSearchResult[]> {
+  const q = query.trim().slice(0, 60);
+  const like = `%${q.replaceAll("%", "").replaceAll("_", "\\_")}%`;
+  return d1Query<UserSearchResult>(
+    `select u.username, u.display_name, u.avatar_url, u.bio,
+       (select count(*) from tier_lists tl where tl.user_id = u.id and tl.is_public = 1) as list_count,
+       (select coalesce(sum(case when x.value = 1 then 1 else 0 end), 0)
+          from (select value, tier_list_id from list_votes
+                union all
+                select value, tier_list_id from anon_list_votes) x
+          join tier_lists tl on tl.id = x.tier_list_id
+          where tl.user_id = u.id) as upvotes_received
+     from users u
+     where u.onboarded = 1 ${q ? "and (u.username like ? or u.display_name like ?)" : ""}
+     order by upvotes_received desc, list_count desc, u.created_at
+     limit ?`,
+    q ? [like, like, limit] : [limit]
+  );
+}
