@@ -10,7 +10,7 @@ import { SparkIcon } from "./icons";
  */
 export default function ModelChip({ model }: { model: Model }) {
   const isThinking = model.variant === "thinking";
-  const name = isThinking ? model.name.replace(/ \(Thinking\)$/, "") : model.name;
+  const name = model.name;
   return (
     <div
       className="relative flex h-16 w-full select-none flex-col items-center justify-center gap-0.5 bg-surface-2 px-1 text-center outline outline-1 outline-black/60 sm:h-20 sm:flex-row sm:justify-start sm:gap-2 sm:px-2.5 sm:text-left"

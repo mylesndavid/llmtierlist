@@ -67,6 +67,7 @@ export interface Model {
   experts: number | null;
   experts_active: number | null;
   is_custom?: number;
+  effort?: string | null;
 }
 
 export interface ModelStats {

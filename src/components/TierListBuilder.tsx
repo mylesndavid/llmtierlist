@@ -689,14 +689,14 @@ export default function TierListBuilder({
             <button
               type="button"
               onClick={() => setRankModes(!rankModes)}
-              title="Rank a model's thinking mode as its own entry"
+              title="Rank each reasoning effort (low / high / max) as its own entry"
               className={`shrink-0 rounded-sm border px-2.5 py-2 text-xs font-medium transition-colors ${
                 rankModes
                   ? "border-foreground bg-foreground text-black"
                   : "border-edge text-muted hover:border-muted hover:text-foreground"
               }`}
             >
-              Thinking modes{!rankModes && thinkingAvailable > 0 ? ` (${thinkingAvailable})` : ""}
+              Reasoning efforts{!rankModes && thinkingAvailable > 0 ? ` (${thinkingAvailable})` : ""}
             </button>
             <button
               type="button"

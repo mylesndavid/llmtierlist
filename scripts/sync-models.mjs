@@ -217,7 +217,12 @@ console.log(`Fetched ${orModels.length} models.`);
 const rows = [];
 const seenSlugs = new Set();
 const reasoningById = new Map();
+const ALIAS_RE = /(^~|-latest$|\/[a-z0-9.-]*-latest$)/i;
+let aliasesSkipped = 0;
 for (const m of orModels) {
+  // "~vendor/x" mirrors and "…-latest" pointers are the same model under a
+  // rolling name; they clutter the corpus and split votes.
+  if (ALIAS_RE.test(m.id)) { aliasesSkipped++; continue; }
   const vendorSlug = m.id.split("/")[0].replace(/^~/, "");
   const slug = slugify(m.id);
   if (seenSlugs.has(slug)) continue;
@@ -249,6 +254,7 @@ for (const m of orModels) {
     hf_id: m.hugging_face_id ?? null,
     experts: null,
     experts_active: null,
+    effort: null,
   });
 }
 
@@ -281,8 +287,17 @@ for (const r of rows) {
   }
 }
 
-// Synthesize a "(Thinking)" entry for hybrid models: reasoning is supported
-// but optional, and no dedicated thinking SKU exists.
+// Synthesize an entry per reasoning effort for hybrid models: people rank
+// "Sol (High)" against "Sol (Low)", not an abstract "thinking mode". Falls back
+// to a single "(Thinking)" entry when a model exposes no effort levels.
+const EFFORT_LABEL = {
+  max: "Max",
+  xhigh: "X-High",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+  minimal: "Minimal",
+};
 const basesWithThinking = new Set(
   rows.filter((r) => r.variant === "thinking").map((r) => r.base_model_id)
 );
@@ -292,19 +307,32 @@ for (const r of [...rows]) {
   const reasoning = reasoningById.get(r.id);
   if (!reasoning || reasoning.mandatory !== false) continue;
   if (basesWithThinking.has(r.id)) continue;
-  const slug = `${r.slug}-thinking`;
-  if (seenSlugs.has(slug)) continue;
-  seenSlugs.add(slug);
-  rows.push({
-    ...r,
-    id: `${r.id}#thinking`,
-    slug,
-    name: `${r.name} (Thinking)`,
-    base_model_id: r.id,
-    variant: "thinking",
-  });
-  synthetic++;
+
+  const efforts = (reasoning.supported_efforts ?? []).filter(
+    (e) => e !== "none" && EFFORT_LABEL[e]
+  );
+
+  if (efforts.length === 0) continue; // no effort levels published, nothing to rank
+
+  for (const effort of efforts) {
+    const id = `${r.id}#${effort}`;
+    const slug = `${r.slug}-${effort}`;
+    if (byId.has(id) || seenSlugs.has(slug)) continue;
+    seenSlugs.add(slug);
+    rows.push({
+      ...r,
+      id,
+      slug,
+      name: `${r.name} (${EFFORT_LABEL[effort]})`,
+      variant: "thinking",
+      base_model_id: r.id,
+      effort,
+    });
+    synthetic++;
+  }
 }
+
+console.log(`Skipped ${aliasesSkipped} rolling aliases (~mirror / -latest).`);
 console.log(
   `Variants: ${rows.filter((r) => r.variant === "service").length} service tiers collapsed, ` +
   `${rows.filter((r) => r.variant === "thinking").length} thinking variants (${synthetic} synthesized).`
@@ -386,7 +414,7 @@ for (const row of existing) {
   console.log(`Freed slug "${row.slug}" from retired ${row.id} -> ${freed}`);
 }
 
-// 21 params per row, D1 caps at 100 params per query -> 4 rows per batch
+// 22 params per row, D1 caps at 100 params per query -> 4 rows per batch
 const BATCH = 4;
 for (let i = 0; i < rows.length; i += BATCH) {
   const batch = rows.slice(i, i + BATCH);
@@ -394,8 +422,8 @@ for (let i = 0; i < rows.length; i += BATCH) {
     `insert into models (id, slug, name, vendor, vendor_slug, description, license,
         release_date, context_window, base_model_id, variant, price_in, price_out,
         input_modalities, output_modalities, params_b, active_params_b, is_moe, hf_id,
-        experts, experts_active)
-     values ${batch.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
+        experts, experts_active, effort)
+     values ${batch.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ")}
      on conflict (id) do update set
        slug = excluded.slug, name = excluded.name, vendor = excluded.vendor,
        vendor_slug = excluded.vendor_slug, description = excluded.description,
@@ -407,11 +435,12 @@ for (let i = 0; i < rows.length; i += BATCH) {
        output_modalities = excluded.output_modalities,
        params_b = excluded.params_b, active_params_b = excluded.active_params_b,
        is_moe = excluded.is_moe, hf_id = excluded.hf_id,
-       experts = excluded.experts, experts_active = excluded.experts_active`,
+       experts = excluded.experts, experts_active = excluded.experts_active,
+       effort = excluded.effort`,
     batch.flatMap((r) => [r.id, r.slug, r.name, r.vendor, r.vendor_slug, r.description,
       r.license, r.release_date, r.context_window, r.base_model_id, r.variant,
       r.price_in, r.price_out, r.input_modalities, r.output_modalities,
-      r.params_b, r.active_params_b, r.is_moe, r.hf_id, r.experts, r.experts_active])
+      r.params_b, r.active_params_b, r.is_moe, r.hf_id, r.experts, r.experts_active, r.effort])
   );
   if ((i / BATCH) % 8 === 0) console.log(`Upserted ${Math.min(i + BATCH, rows.length)}/${rows.length}`);
 }
