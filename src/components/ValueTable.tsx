@@ -5,7 +5,12 @@ import Link from "next/link";
 import VendorLogo from "./VendorLogo";
 import { DEFAULT_TIERS } from "@/lib/types";
 import {
+  SHRINK_TASKS,
   formatCost,
+  formatTokenCount,
+  formatUsage,
+  isThin,
+  sampleLabel,
   formatPct,
   formatSeconds,
   formatTokens,
@@ -26,13 +31,13 @@ type SortKey =
   | "cost"
   | "time"
   | "tokens"
+  | "usage"
   | "status";
 
 const TIER_COLOR = new Map(DEFAULT_TIERS.map((t) => [t.key, t.color]));
 const TIER_INDEX = new Map(DEFAULT_TIERS.map((t, i) => [t.key, i]));
 
 const acc = (r: Row, k: BenchmarkKey) => r.model.metrics[k]!.accuracy;
-const pinned = (r: Row, k: BenchmarkKey) => r.model.metrics[k]!.pinned;
 
 const SORT_VALUE: Record<SortKey, (r: Row) => number | string | null> = {
   rank: (r) => r.rank,
@@ -45,11 +50,12 @@ const SORT_VALUE: Record<SortKey, (r: Row) => number | string | null> = {
   cost: (r) => r.cost,
   time: (r) => r.timeS,
   tokens: (r) => r.tokens,
+  usage: (r) => r.model.usage?.rank ?? null,
   status: (r) => (r.frontier ? 0 : r.dominatedBy ? 1 : 2),
 };
 
 // Lower-is-better columns sort ascending first; everything else descending.
-const ASC_FIRST = new Set<SortKey>(["rank", "tier", "name", "cost", "time", "tokens", "status"]);
+const ASC_FIRST = new Set<SortKey>(["rank", "tier", "name", "cost", "time", "tokens", "usage", "status"]);
 
 const COLUMNS: Array<{ key: SortKey; label: string; align?: "right" }> = [
   { key: "rank", label: "#", align: "right" },
@@ -62,6 +68,7 @@ const COLUMNS: Array<{ key: SortKey; label: string; align?: "right" }> = [
   { key: "cost", label: "Cost/task", align: "right" },
   { key: "time", label: "Time/task", align: "right" },
   { key: "tokens", label: "Tokens/task", align: "right" },
+  { key: "usage", label: "Usage (7d)", align: "right" },
   { key: "status", label: "Status" },
 ];
 
@@ -73,7 +80,38 @@ function Pinned({ show }: { show: boolean }) {
   ) : null;
 }
 
-export default function ValueTable({ rows }: { rows: Row[] }) {
+/** Raw accuracy, with the sample and the adjusted value used for ranking in the tooltip. */
+function Accuracy({ r, k }: { r: Row; k: BenchmarkKey }) {
+  const m = r.model.metrics[k]!;
+  const thin = isThin(m);
+  const title = `${sampleLabel(m)}. Adjusted for ranking: ${formatPct(r.adjusted[k])}`;
+  return (
+    <span className="cursor-help" title={title}>
+      {formatPct(m.accuracy)}
+      <Pinned show={m.pinned} />
+      {thin && (
+        <sup className="text-muted" aria-label={`Thin sample: ${sampleLabel(m)}`}>
+          †
+        </sup>
+      )}
+    </span>
+  );
+}
+
+function Usage({ r }: { r: Row }) {
+  const u = r.model.usage;
+  if (!u) {
+    return (
+      <span className="cursor-help text-muted" title="Outside OpenRouter's published top list for the last 7 days">
+        —
+      </span>
+    );
+  }
+  return <span title={`${formatTokenCount(u.tokens)} tokens on OpenRouter in the last 7 days`}>{formatUsage(u)}</span>;
+}
+
+export default function ValueTable({ rows, showUsage }: { rows: Row[]; showUsage: boolean }) {
+  const columns = showUsage ? COLUMNS : COLUMNS.filter((c) => c.key !== "usage");
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({ key: "rank", asc: true });
   const byId = useMemo(() => new Map(rows.map((r) => [r.model.id, r])), [rows]);
 
@@ -98,10 +136,10 @@ export default function ValueTable({ rows }: { rows: Row[] }) {
   return (
     <div>
       <div className="overflow-x-auto rounded-sm border border-edge">
-        <table className="w-full min-w-[56rem] text-sm">
+        <table className="w-full min-w-[62rem] text-sm">
           <thead className="bg-surface-2 text-left text-xs text-muted">
             <tr>
-              {COLUMNS.map((c) => (
+              {columns.map((c) => (
                 <th
                   key={c.key}
                   scope="col"
@@ -147,16 +185,19 @@ export default function ValueTable({ rows }: { rows: Row[] }) {
                 <td className="px-2 py-1.5 text-right font-mono">{r.score.toFixed(1)}</td>
                 <td className="px-2 py-1.5 text-right font-mono">{r.quality.toFixed(1)}</td>
                 <td className="px-2 py-1.5 text-right font-mono">
-                  {formatPct(acc(r, "gpqa_diamond"))}
-                  <Pinned show={pinned(r, "gpqa_diamond")} />
+                  <Accuracy r={r} k="gpqa_diamond" />
                 </td>
                 <td className="px-2 py-1.5 text-right font-mono">
-                  {formatPct(acc(r, "tau_bench_verified_airline"))}
-                  <Pinned show={pinned(r, "tau_bench_verified_airline")} />
+                  <Accuracy r={r} k="tau_bench_verified_airline" />
                 </td>
                 <td className="px-2 py-1.5 text-right font-mono">{formatCost(r.cost)}</td>
                 <td className="px-2 py-1.5 text-right font-mono">{formatSeconds(r.timeS)}</td>
                 <td className="px-2 py-1.5 text-right font-mono">{formatTokens(r.tokens)}</td>
+                {showUsage && (
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono">
+                    <Usage r={r} />
+                  </td>
+                )}
                 <td className="px-2 py-1.5 text-xs">
                   {r.frontier ? (
                     <span className="font-semibold text-foreground">Frontier</span>
@@ -177,7 +218,10 @@ export default function ValueTable({ rows }: { rows: Row[] }) {
       </div>
       <p className="mt-2 text-xs text-muted">
         * No default-routing run for that benchmark; the figure is an average over the providers
-        OpenRouter pinned, weighted by questions. A dash means the dataset has no value.
+        OpenRouter pinned, weighted by questions. † Thin sample: the 95% interval is wider than ±5 points.
+        Accuracy shown is the raw result; hover for runs, tasks and the adjusted value used for
+        ranking. Scores from few tasks are pulled toward the benchmark average before ranking, so a lucky small sample can&apos;t top the list. (Each result is blended with the benchmark
+        average as if that average had {SHRINK_TASKS} more tasks.) A dash means the dataset has no value.
       </p>
     </div>
   );

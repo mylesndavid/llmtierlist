@@ -10,6 +10,8 @@ import {
   DEFAULT_BENCHMARK_WEIGHTS,
   DEFAULT_PRESET,
   PRESETS,
+  SHRINK_TASKS,
+  USAGE_DAYS,
   formatCost,
   formatSeconds,
   presetByKey,
@@ -84,9 +86,11 @@ function Slider({
 export default function ValueTierList({
   models,
   initialPreset,
+  showUsage,
 }: {
   models: ValueModel[];
   initialPreset: PresetKey;
+  showUsage: boolean;
 }) {
   const start = presetByKey(initialPreset) ?? presetByKey(DEFAULT_PRESET)!;
   const [preset, setPreset] = useState<PresetKey | null>(start.key);
@@ -189,12 +193,12 @@ export default function ValueTierList({
           Each point is a model. Points on the line are the frontier: no other
           model scores higher for less. Faded points are beaten on both.
         </p>
-        <ValueScatter rows={result.models} />
+        <ValueScatter rows={result.models} showUsage={showUsage} />
       </section>
 
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">All models</h2>
-        <ValueTable rows={result.models} />
+        <ValueTable rows={result.models} showUsage={showUsage} />
       </section>
 
       <section className="space-y-2 text-sm text-muted">
@@ -206,7 +210,8 @@ export default function ValueTierList({
           by number of questions (marked with *).
         </p>
         <p>
-          Quality (Q) is each model&apos;s percentile rank on each benchmark, 0 to 100, averaged
+          Quality (Q) is each model&apos;s percentile rank on each benchmark, using the
+          adjusted accuracy described below, 0 to 100, averaged
           with weights {BENCHMARKS.map((b) => `${b.short} ${benchShare(b.key)}%`).join(", ")}.
         </p>
         <p>
@@ -227,6 +232,20 @@ export default function ValueTierList({
           Tiers split the ranking by percentile: S is the top 10%, A to 30%, B to 55%, C to 80%, D
           to 95%, F the rest. Models with equal scores share a tier.
         </p>
+        <p>
+          Scores from few tasks are pulled toward the benchmark average before ranking, so a lucky small sample can&apos;t top the list. Each accuracy is blended
+          with the benchmark&apos;s average as if that average had been measured on{" "}
+          {SHRINK_TASKS} more tasks, so a result from 50 tasks moves two thirds of the way to the
+          average and one from 2,000 tasks barely moves. Results whose 95% interval is wider than
+          ±5 points are marked with †; the mark is information only.
+        </p>
+        {showUsage && (
+          <p>
+            Usage is total tokens on OpenRouter over the last {USAGE_DAYS} days, ranked against
+            every model in OpenRouter&apos;s daily top list. Variants such as :free count toward
+            their model. It is shown for context and does not affect the score.
+          </p>
+        )}
       </section>
     </div>
   );
