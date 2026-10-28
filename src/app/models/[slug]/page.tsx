@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -17,6 +18,7 @@ import VendorLogo from "@/components/VendorLogo";
 import ScoreHistory from "@/components/ScoreHistory";
 import SpecGrid from "@/components/SpecGrid";
 import ExpandableText from "@/components/ExpandableText";
+import XPosts, { XPostsSkeleton } from "@/components/XPosts";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +111,10 @@ export default async function ModelPage({
       </section>
 
       <ScoreHistory points={history} live={stats.net_score} />
+
+      <Suspense fallback={<XPostsSkeleton />}>
+        <XPosts model={{ id: model.id, name: model.name }} />
+      </Suspense>
 
       <section className="space-y-4">
         <h2 className="text-xl font-bold">
