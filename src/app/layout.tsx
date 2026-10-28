@@ -58,6 +58,7 @@ export default async function RootLayout({
             </Link>
             <div className="hidden items-center gap-5 text-sm text-muted sm:flex">
               <Link href="/tiers" prefetch className="hover:text-foreground">Official tier list</Link>
+              <Link href="/value" prefetch className="hover:text-foreground">Value tier list</Link>
               <Link href="/tierlists" prefetch className="hover:text-foreground">Community lists</Link>
               <Link href="/models" prefetch className="hover:text-foreground">Models</Link>
               <Link href="/compare" className="hover:text-foreground">Compare</Link>

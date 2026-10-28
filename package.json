@@ -10,7 +10,8 @@
     "sync:models": "node scripts/sync-models.mjs",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "snapshot:scores": "node scripts/snapshot-scores.mjs"
+    "snapshot:scores": "node scripts/snapshot-scores.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -37,6 +38,7 @@
     "supabase": "^2.115.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vitest": "^3.2.4",
     "wrangler": "^4.125.0"
   }
 }
