@@ -6,6 +6,7 @@ import { signOut } from "@/lib/actions";
 import UserMenu from "@/components/UserMenu";
 import TrackVisit from "@/components/TrackVisit";
 import MobileNav from "@/components/MobileNav";
+import { NAV_LINKS } from "@/lib/nav";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -56,13 +57,12 @@ export default async function RootLayout({
               <img src="/logo.png" alt="" className="h-7 w-7" />
               <span>LLMTierList<span className="text-muted">.com</span></span>
             </Link>
-            <div className="hidden items-center gap-5 text-sm text-muted sm:flex">
-              <Link href="/tiers" prefetch className="hover:text-foreground">Official tier list</Link>
-              <Link href="/value" prefetch className="hover:text-foreground">Value tier list</Link>
-              <Link href="/tierlists" prefetch className="hover:text-foreground">Community lists</Link>
-              <Link href="/models" prefetch className="hover:text-foreground">Models</Link>
-              <Link href="/compare" className="hover:text-foreground">Compare</Link>
-              <Link href="/people" className="hover:text-foreground">People</Link>
+            <div className="hidden items-center gap-4 text-sm text-muted lg:flex">
+              {NAV_LINKS.map((l) => (
+                <Link key={l.href} href={l.href} prefetch={l.prefetch} className="whitespace-nowrap hover:text-foreground">
+                  {l.label}
+                </Link>
+              ))}
             </div>
             <div className="ml-auto flex items-center gap-3 text-sm">
               <Link
