@@ -235,3 +235,22 @@ create table if not exists tier_list_versions (
   primary key (tier_list_id, version)
 );
 create index if not exists tlv_list_idx on tier_list_versions (tier_list_id, version desc);
+
+-- Daily Balanced-preset value numbers per benchmarked model (OpenRouter id),
+-- written by scripts/snapshot-value.mjs from /api/value.json. `day` is the
+-- benchmark snapshot date. Not a foreign key: benchmarked models can be
+-- missing from the catalog.
+create table if not exists value_snapshots (
+  day text not null,
+  model_id text not null,
+  q real,
+  value_score real,
+  tier text,
+  gpqa real,
+  tau real,
+  cost_per_task real,
+  time_per_task_s real,
+  usage_rank integer,
+  primary key (day, model_id)
+);
+create index if not exists vs_model_idx on value_snapshots (model_id, day);
