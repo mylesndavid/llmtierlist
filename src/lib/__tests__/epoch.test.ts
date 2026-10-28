@@ -1,21 +1,28 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/d1", () => ({ d1Query: vi.fn() }));
+
 import catalog from "./fixtures/or-catalog-sample.json";
+import { d1Query } from "@/lib/d1";
 import {
   buildEpochSnapshot,
   csvObjects,
   ECI_NAME,
-  EPOCH_ZIP_URL,
+  epochRows,
   epochRunBenchmarks,
+  epochSnapshotFromZip,
   csvHeader,
   parseCsv,
+  parseEpochScores,
   readZipText,
   wantedEpochFile,
 } from "../epoch";
 import { buildMatchIndex } from "../modelMatch";
-import { getEpochForModel, loadEpoch, resetEpochMemoryCache } from "../epochData";
-import { resetCatalogMemoryCache } from "../openrouterCatalog";
+import { getEpochForModel } from "../epochData";
+
+const d1 = vi.mocked(d1Query);
 
 const zipPath = fileURLToPath(new URL("./fixtures/epoch-sample.zip", import.meta.url));
 function zipBuffer(): ArrayBuffer {
@@ -98,41 +105,75 @@ describe("buildEpochSnapshot", () => {
   });
 });
 
-describe("loadEpoch", () => {
+describe("epochSnapshotFromZip", () => {
+  it("unzips the archive and returns scores per model", async () => {
+    const snap = await epochSnapshotFromZip(zipBuffer(), buildMatchIndex(catalog.data));
+    expect(snap.byModel["google/gemini-2.5-pro"].length).toBeGreaterThan(0);
+    expect(snap.byModel["nobody/nothing"]).toBeUndefined();
+  });
+
+  it("throws on an archive that is not Epoch's", async () => {
+    await expect(
+      epochSnapshotFromZip(new TextEncoder().encode("nope").buffer as ArrayBuffer, buildMatchIndex(catalog.data))
+    ).rejects.toThrow();
+  });
+
+  it("throws when nothing matches the catalog", async () => {
+    await expect(epochSnapshotFromZip(zipBuffer(), buildMatchIndex([]))).rejects.toThrow(/matched no models/);
+  });
+});
+
+describe("epochRows and parseEpochScores", () => {
+  it("round-trips a model's scores through the stored row", async () => {
+    const snap = await epochSnapshotFromZip(zipBuffer(), buildMatchIndex(catalog.data));
+    const rows = epochRows(snap);
+    expect(rows.map((r) => r.model_id)).toEqual(Object.keys(snap.byModel).sort());
+    const gpt5 = rows.find((r) => r.model_id === "openai/gpt-5")!;
+    expect(parseEpochScores(gpt5.scores)).toEqual(snap.byModel["openai/gpt-5"]);
+  });
+
+  it("returns an empty list for unreadable values", () => {
+    expect(parseEpochScores(undefined)).toEqual([]);
+    expect(parseEpochScores("not json")).toEqual([]);
+    expect(parseEpochScores('{"a":1}')).toEqual([]);
+    expect(parseEpochScores('[{"benchmark":1}]')).toEqual([]);
+  });
+});
+
+describe("getEpochForModel", () => {
   beforeEach(() => {
-    resetEpochMemoryCache();
-    resetCatalogMemoryCache();
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "acct");
+    vi.stubEnv("CLOUDFLARE_D1_DATABASE_ID", "db");
+    vi.stubEnv("CLOUDFLARE_API_TOKEN", "token");
     vi.spyOn(console, "error").mockImplementation(() => {});
+    d1.mockReset();
   });
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  it("downloads the archive and returns scores per model", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) =>
-        url === EPOCH_ZIP_URL
-          ? new Response(zipBuffer(), { status: 200 })
-          : new Response(JSON.stringify(catalog), { status: 200 })
-      )
-    );
-    const res = await loadEpoch();
-    expect(res.ok).toBe(true);
-    expect((await getEpochForModel("google/gemini-2.5-pro")).length).toBeGreaterThan(0);
-    expect(await getEpochForModel("nobody/nothing")).toEqual([]);
+  it("reads one stored row and never downloads the archive", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const snap = await epochSnapshotFromZip(zipBuffer(), buildMatchIndex(catalog.data));
+    d1.mockResolvedValueOnce([{ scores: JSON.stringify(snap.byModel["google/gemini-2.5-pro"]) }]);
+    expect(await getEpochForModel("google/gemini-2.5-pro")).toEqual(snap.byModel["google/gemini-2.5-pro"]);
+    expect(d1).toHaveBeenCalledWith("select scores from epoch_scores where model_id = ?", ["google/gemini-2.5-pro"]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("returns an error state on a failed download", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) =>
-        url === EPOCH_ZIP_URL ? new Response("nope", { status: 503 }) : new Response(JSON.stringify(catalog))
-      )
-    );
-    const res = await loadEpoch();
-    expect(res.ok).toBe(false);
+  it("returns an empty list for an unknown model or a D1 error", async () => {
+    d1.mockResolvedValueOnce([]);
+    expect(await getEpochForModel("nobody/nothing")).toEqual([]);
+    d1.mockRejectedValueOnce(new Error("no such table: epoch_scores"));
     expect(await getEpochForModel("openai/gpt-5")).toEqual([]);
+  });
+
+  it("skips D1 when it is not configured", async () => {
+    vi.stubEnv("CLOUDFLARE_API_TOKEN", "");
+    expect(await getEpochForModel("openai/gpt-5")).toEqual([]);
+    expect(d1).not.toHaveBeenCalled();
   });
 });

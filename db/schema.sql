@@ -264,3 +264,12 @@ create table if not exists x_panels (
   scored integer not null,
   payload text not null
 );
+
+-- Epoch AI benchmark scores per model (OpenRouter id), written daily by
+-- scripts/sync-epoch.mjs. `scores` is the JSON EpochScore[] the model page
+-- shows; parsing Epoch's archive is too much CPU for a Worker request.
+create table if not exists epoch_scores (
+  model_id text primary key,
+  scores text not null,
+  updated_at text not null
+);

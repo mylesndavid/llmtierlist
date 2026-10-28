@@ -12,6 +12,7 @@
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "snapshot:scores": "node scripts/snapshot-scores.mjs",
     "snapshot:value": "node scripts/snapshot-value.mjs",
+    "sync:epoch": "node scripts/sync-epoch.mjs",
     "test": "vitest run"
   },
   "dependencies": {

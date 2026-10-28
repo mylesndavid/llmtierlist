@@ -347,6 +347,57 @@ export function buildEpochSnapshot(input: EpochFiles, index: MatchIndex): EpochS
   return snap;
 }
 
+/**
+ * Unzip Epoch's archive and match its rows to OpenRouter ids. This is
+ * CPU-bound (about 30-60 ms on the full 2.3 MB archive, measured locally), so
+ * it runs in the daily sync (scripts/sync-epoch.mjs), not on a request. Pages
+ * read the stored rows from D1. Throws when the archive is unusable.
+ */
+export async function epochSnapshotFromZip(buf: ArrayBuffer, index: MatchIndex): Promise<EpochSnapshot> {
+  const files = await readZipText(buf, wantedEpochFile);
+  const metadata = files.get("benchmark_metadata.csv");
+  if (!metadata) throw new Error("Epoch archive has no benchmark_metadata.csv");
+  const snap = buildEpochSnapshot(
+    {
+      metadata,
+      files,
+      eci: files.get("epoch_capabilities_index/eci_scores.csv"),
+      modelMetadata: files.get("model_metadata.csv"),
+    },
+    index
+  );
+  if (Object.keys(snap.byModel).length === 0) throw new Error("Epoch data matched no models");
+  return snap;
+}
+
+/** One row of the epoch_scores table per matched model. Column names match db/schema.sql. */
+export function epochRows(snap: EpochSnapshot): Array<{ model_id: string; scores: string }> {
+  return Object.entries(snap.byModel)
+    .filter(([, scores]) => scores.length > 0)
+    .map(([model_id, scores]) => ({ model_id, scores: JSON.stringify(scores) }))
+    .sort((a, b) => a.model_id.localeCompare(b.model_id));
+}
+
+/** Parse a stored epoch_scores.scores value; empty for anything unreadable. */
+export function parseEpochScores(json: unknown): EpochScore[] {
+  if (typeof json !== "string") return [];
+  try {
+    const data = JSON.parse(json) as unknown;
+    if (!Array.isArray(data)) return [];
+    return data.filter(
+      (s): s is EpochScore =>
+        !!s &&
+        typeof s === "object" &&
+        typeof (s as EpochScore).benchmark === "string" &&
+        typeof (s as EpochScore).label === "string" &&
+        typeof (s as EpochScore).score === "number" &&
+        typeof (s as EpochScore).url === "string"
+    );
+  } catch {
+    return [];
+  }
+}
+
 /** Files the loader needs out of the archive. */
 export function wantedEpochFile(name: string): boolean {
   return (
