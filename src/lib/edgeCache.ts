@@ -24,9 +24,14 @@ function keyFor(key: string): Request {
   return new Request(`${ORIGIN}/${encodeURIComponent(key)}`);
 }
 
+/**
+ * Return the cached value for `key`, or load and cache it. A load that throws
+ * is not cached. `ttlSeconds` may depend on the loaded value (for example a
+ * shorter TTL for an empty result).
+ */
 export async function cachedJson<T>(
   key: string,
-  ttlSeconds: number,
+  ttlSeconds: number | ((data: T) => number),
   load: () => Promise<T>
 ): Promise<T> {
   const cache = edgeCache();
@@ -40,13 +45,14 @@ export async function cachedJson<T>(
   }
 
   const data = await load();
+  const ttl = typeof ttlSeconds === "function" ? ttlSeconds(data) : ttlSeconds;
   try {
     await cache.put(
       keyFor(key),
       new Response(JSON.stringify(data), {
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": `public, max-age=${ttlSeconds}`,
+          "Cache-Control": `public, max-age=${ttl}`,
         },
       })
     );
