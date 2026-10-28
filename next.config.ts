@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      // The value view is the home page now. The query string (e.g. ?preset=raw) passes through.
+      { source: "/value", destination: "/", permanent: false },
+    ];
+  },
   experimental: {
     /**
      * Client-side router cache. Every page here is dynamic (vote state is

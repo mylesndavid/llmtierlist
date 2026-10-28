@@ -1,0 +1,92 @@
+{
+  "code": 200,
+  "router": "/api/v1/twitter/web/fetch_tweet_detail",
+  "params": {
+    "tweet_id": "2114037233875292391"
+  },
+  "data": {
+    "likes": 41,
+    "created_at": "Sat Oct 24 16:52:08 +0000 2026",
+    "status": "active",
+    "text": "GLM 5.3 Flash on two sparks is phenomenal.",
+    "display_text": "GLM 5.3 Flash on two sparks is phenomenal.",
+    "retweets": 1,
+    "bookmarks": 5,
+    "quotes": 0,
+    "reply_to": null,
+    "replies": 4,
+    "lang": "en",
+    "in_reply_to_screen_name": null,
+    "in_reply_to_status_id_str": null,
+    "in_reply_to_user_id_str": null,
+    "sensitive": null,
+    "views": "3099",
+    "conversation_id": "2114037233875292391",
+    "entities": {
+      "hashtags": [],
+      "symbols": [],
+      "timestamps": [],
+      "urls": [],
+      "user_mentions": []
+    },
+    "conversation_control": {
+      "policy": null
+    },
+    "initial_tweets": null,
+    "author": {
+      "rest_id": "2841951623",
+      "name": "Ash Hart",
+      "screen_name": "ashxhart",
+      "image": "https://pbs.twimg.com/profile_images/2076633444411494400/InvR8zXt_normal.jpg",
+      "blue_verified": true,
+      "verification": null,
+      "sub_count": 9248
+    },
+    "media": null,
+    "quoted": {
+      "tweet_id": "2114031665899081732",
+      "bookmarks": 27,
+      "created_at": "Sat Oct 24 16:30:00 +0000 2026",
+      "favorites": 31,
+      "text": "GLM-5.3-Flash on two DGX Sparks built this voxel sky kingdom in 71.1 min, on @MiaAI_lab's recipe and the TensorFold Python engine.\n\nMia's recipe at commit 3fd60dfc: EXL3 4 bpw quant, one model split across both Sparks (TP2), DFlash2 draft model, 8 slots (her recipe allows up to https://t.co/IRGFLzylHq",
+      "lang": "en",
+      "views": "16849",
+      "quotes": 2,
+      "replies": 10,
+      "retweets": 3,
+      "conversation_id": "2114031665899081732",
+      "author": {
+        "rest_id": "2069012523873878016",
+        "name": "Niklas",
+        "screen_name": "niklaslenz_ai",
+        "avatar": "https://pbs.twimg.com/profile_images/2108625696088113152/uVudOEyp_normal.jpg",
+        "blue_verified": true
+      },
+      "media": {
+        "video": [
+          {
+            "media_url_https": "https://pbs.twimg.com/amplify_video_thumb/2113960283324465152/img/m21V2tTJ8MhqSy0H.jpg",
+            "variants": [
+              {
+                "content_type": "application/x-mpegURL",
+                "url": "https://video.twimg.com/amplify_video/2113960283324465152/pl/6WD_Kw8B-5ip7CW6.m3u8?tag=29"
+              }
+            ],
+            "aspect_ratio": [
+              4,
+              5
+            ],
+            "duration": 42300,
+            "original_info": {
+              "focus_rects": [],
+              "height": 1350,
+              "width": 1080
+            },
+            "id": "2113960283324465152"
+          }
+        ]
+      }
+    },
+    "id": "2114037233875292391"
+  }
+}

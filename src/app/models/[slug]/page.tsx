@@ -16,9 +16,14 @@ import ReviewForm from "@/components/ReviewForm";
 import ReviewCard from "@/components/ReviewCard";
 import VendorLogo from "@/components/VendorLogo";
 import ScoreHistory from "@/components/ScoreHistory";
+import ValueHistory from "@/components/ValueHistory";
+import { getValueHistory } from "@/lib/valueHistory";
 import SpecGrid from "@/components/SpecGrid";
 import ExpandableText from "@/components/ExpandableText";
 import XPosts, { XPostsSkeleton } from "@/components/XPosts";
+import ArenaRatings from "@/components/ArenaRatings";
+import EpochBenchmarks from "@/components/EpochBenchmarks";
+import ProviderStats from "@/components/ProviderStats";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +44,12 @@ export default async function ModelPage({
     if (base) redirect(`/models/${base.slug}`);
   }
 
-  const [reviews, userVotes, user, history] = await Promise.all([
+  const [reviews, userVotes, user, history, valueHistory] = await Promise.all([
     getReviewsForModel(model.id),
     getUserVotes(),
     getCurrentUser(),
     getModelScoreHistory(model.id),
+    getValueHistory(model.id),
   ]);
 
   const myReview = user ? reviews.find((r) => r.user_id === user.id) : undefined;
@@ -112,8 +118,21 @@ export default async function ModelPage({
 
       <ScoreHistory points={history} live={stats.net_score} />
 
+      <ValueHistory points={valueHistory} />
+
       <Suspense fallback={<XPostsSkeleton />}>
         <XPosts model={{ id: model.id, name: model.name }} />
+      </Suspense>
+
+      {/* Outside data: each section renders nothing when its source has no data. */}
+      <Suspense fallback={null}>
+        <ArenaRatings modelId={model.id} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <EpochBenchmarks modelId={model.id} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ProviderStats modelId={model.id} />
       </Suspense>
 
       <section className="space-y-4">

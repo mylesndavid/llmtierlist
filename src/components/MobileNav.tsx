@@ -2,21 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-
-const LINKS = [
-  { href: "/tiers", label: "Official tier list" },
-  { href: "/value", label: "Value tier list" },
-  { href: "/tierlists", label: "Community lists" },
-  { href: "/models", label: "Models" },
-  { href: "/compare", label: "Compare models" },
-  { href: "/people", label: "People" },
-];
+import { NAV_LINKS } from "@/lib/nav";
 
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="relative sm:hidden">
+    <div className="relative lg:hidden">
       <button
         type="button"
         aria-label="Menu"
@@ -31,11 +23,11 @@ export default function MobileNav() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-sm border border-edge bg-surface py-1 shadow-xl shadow-black/50">
-            {LINKS.map((l) => (
+            {NAV_LINKS.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                prefetch
+                prefetch={l.prefetch}
                 onClick={() => setOpen(false)}
                 className="block px-3 py-2.5 text-sm text-muted hover:bg-surface-2 hover:text-foreground"
               >

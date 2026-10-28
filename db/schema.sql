@@ -235,3 +235,41 @@ create table if not exists tier_list_versions (
   primary key (tier_list_id, version)
 );
 create index if not exists tlv_list_idx on tier_list_versions (tier_list_id, version desc);
+
+-- Daily Balanced-preset value numbers per benchmarked model (OpenRouter id),
+-- written by scripts/snapshot-value.mjs from /api/value.json. `day` is the
+-- benchmark snapshot date. Not a foreign key: benchmarked models can be
+-- missing from the catalog.
+create table if not exists value_snapshots (
+  day text not null,
+  model_id text not null,
+  q real,
+  value_score real,
+  tier text,
+  gpqa real,
+  tau real,
+  cost_per_task real,
+  time_per_task_s real,
+  usage_rank integer,
+  primary key (day, model_id)
+);
+create index if not exists vs_model_idx on value_snapshots (model_id, day);
+
+-- Stored "What people are saying" panels: X posts about a model, scored by
+-- Jev, refreshed at most every 12h (1h when unscored). `payload` is the JSON
+-- panel (posts, counts, scored, fetchedAt).
+create table if not exists x_panels (
+  model_id text primary key,
+  fetched_at text not null,
+  scored integer not null,
+  payload text not null
+);
+
+-- Epoch AI benchmark scores per model (OpenRouter id), written daily by
+-- scripts/sync-epoch.mjs. `scores` is the JSON EpochScore[] the model page
+-- shows; parsing Epoch's archive is too much CPU for a Worker request.
+create table if not exists epoch_scores (
+  model_id text primary key,
+  scores text not null,
+  updated_at text not null
+);
