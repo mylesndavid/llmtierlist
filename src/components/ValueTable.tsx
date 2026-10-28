@@ -50,8 +50,8 @@ const COLUMNS: Array<{ key: ColumnKey; label: string; title?: string; align?: "r
   { key: "cost", label: "Cost/task", align: "right" },
   { key: "time", label: "Time/task", align: "right" },
   { key: "usage", label: "Usage (7d)", align: "right" },
-  { key: "sentiment", label: "Sentiment", align: "right" },
-  { key: "arena", label: "Arena", align: "right" },
+  { key: "sentiment", label: "Sentiment", title: "Share of positive posts on X", align: "right" },
+  { key: "arena", label: "Arena", title: "LMArena text rating", align: "right" },
   { key: "status", label: "Status" },
 ];
 

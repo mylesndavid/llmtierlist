@@ -258,6 +258,20 @@ describe("cache-only readers", () => {
     expect(d1.mock.calls[1][1]).toEqual(["b/stale"]);
   });
 
+  it("peekPanels with edge: false skips the colo cache and still batches D1", async () => {
+    const match = vi.fn(async () => undefined);
+    vi.stubGlobal("caches", { default: { match, put: vi.fn(), delete: vi.fn() } });
+    d1.mockResolvedValueOnce([row("a/fresh", panel(HOUR))]);
+    const out = await peekPanels(["a/fresh", "d/none"], { edge: false });
+    expect(match).not.toHaveBeenCalled();
+    expect(d1).toHaveBeenCalledTimes(1);
+    expect([...out.keys()]).toEqual(["a/fresh"]);
+    // the default still looks in the colo cache first
+    d1.mockResolvedValueOnce([]);
+    await peekPanels(["d/none"]);
+    expect(match).toHaveBeenCalledTimes(1);
+  });
+
   it("fillPanels loads at most `max` models, `concurrency` at a time", async () => {
     vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "");
     let active = 0;

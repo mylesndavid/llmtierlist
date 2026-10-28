@@ -93,7 +93,7 @@ export default async function CompareEntry({
       {value.ok && (
         <p className="text-xs text-muted">
           Balanced preset of the{" "}
-          <Link href="/value" className="underline hover:text-foreground">
+          <Link href="/" className="underline hover:text-foreground">
             value tier list
           </Link>
           . Benchmarks: OpenRouter, CC BY 4.0, snapshot {value.snapshotDate}.

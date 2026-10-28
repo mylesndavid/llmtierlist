@@ -108,7 +108,7 @@ export default function ValueHistory({ points }: { points: ValueHistoryPoint[] }
       </div>
       <p className="text-xs text-muted">
         Balanced preset, from the daily{" "}
-        <Link href="/value" className="underline hover:text-foreground">
+        <Link href="/" className="underline hover:text-foreground">
           value tier list
         </Link>{" "}
         snapshot.

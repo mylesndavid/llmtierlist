@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { after } from "next/server";
+import { Suspense } from "react";
 import { DEFAULT_PRESET, presetByKey } from "@/lib/value";
-import { loadValueView } from "@/lib/valueView";
+import { loadValueData } from "@/lib/valueLoad";
+import { withTableSignals } from "@/lib/valueSignals";
+import { loadArena } from "@/lib/arenaData";
 import ValueTierList from "@/components/ValueTierList";
 import ValueCredits from "@/components/ValueCredits";
 import AccountBanners from "@/components/AccountBanners";
+import NewThisWeek from "@/components/NewThisWeek";
 
 const TITLE = "Which LLM is worth it? Benchmark accuracy against cost per task";
 const DESCRIPTION =
@@ -23,9 +28,14 @@ export default async function Home({
 }: {
   searchParams: Promise<{ preset?: string | string[]; error?: string | string[] }>;
 }) {
-  const [{ preset, error }, view] = await Promise.all([searchParams, loadValueView()]);
+  const [{ preset, error }, value] = await Promise.all([searchParams, loadValueData()]);
   const initialPreset = presetByKey(typeof preset === "string" ? preset : null)?.key ?? DEFAULT_PRESET;
-  const { bench, usage, models, showUsage, showOpenWeights } = view;
+  const { bench, usageLoad } = value;
+  const table = value.ok ? await withTableSignals(value.models) : null;
+  // Arena ratings are read from cache only; on a cold cache, load them after
+  // the response so a later view has the column.
+  if (table && !table.arenaCached) after(() => loadArena());
+  const models = table?.models ?? [];
 
   return (
     <div className="space-y-6">
@@ -52,12 +62,12 @@ export default async function Home({
         </p>
       </header>
 
-      {bench.ok ? (
+      {value.ok ? (
         <ValueTierList
           models={models}
           initialPreset={initialPreset}
-          showUsage={showUsage}
-          showOpenWeights={showOpenWeights}
+          showUsage={value.showUsage}
+          showOpenWeights={value.showOpenWeights}
         />
       ) : (
         <div role="status" className="rounded-sm border border-edge bg-surface p-6 text-sm">
@@ -77,7 +87,11 @@ export default async function Home({
         </div>
       )}
 
-      <ValueCredits bench={bench} usage={usage} />
+      <Suspense fallback={null}>
+        <NewThisWeek value={value} />
+      </Suspense>
+
+      <ValueCredits bench={bench} usage={usageLoad} />
     </div>
   );
 }

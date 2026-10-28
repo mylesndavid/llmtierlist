@@ -48,7 +48,7 @@ export default async function NewModelsPage({
         <p className="mt-1 max-w-2xl text-sm text-muted">
           Models added to OpenRouter in the last 30 days, newest first. Tier, Q and value score
           use the Balanced preset of the{" "}
-          <Link href="/value" className="underline hover:text-foreground">
+          <Link href="/" className="underline hover:text-foreground">
             value tier list
           </Link>
           .

@@ -2,14 +2,15 @@ import Link from "next/link";
 import VendorLogo from "@/components/VendorLogo";
 import { TierBadge, fmtReleaseDay } from "@/components/ReleaseRow";
 import { loadNewReleases } from "@/lib/newReleasesLoad";
+import type { ValueData } from "@/lib/valueLoad";
 
 /**
  * "New this week" strip for the home page: models released in the last 7
  * days, newest first. Server component; renders nothing when there are none
- * or the data is unavailable.
+ * or the data is unavailable. Pass the page's `value` to reuse its load.
  */
-export default async function NewThisWeek({ limit = 8 }: { limit?: number }) {
-  const load = await loadNewReleases(7);
+export default async function NewThisWeek({ limit = 8, value }: { limit?: number; value?: ValueData }) {
+  const load = await loadNewReleases(7, undefined, value);
   if (!load.ok || load.entries.length === 0) return null;
   const entries = load.entries.slice(0, limit);
 

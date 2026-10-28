@@ -136,6 +136,12 @@ export async function getArenaForModel(id: string): Promise<{ entries: ArenaEntr
   return { entries: res.byModel[id] ?? [], dates: res.dates };
 }
 
+function ratingsOf(data: ArenaSnapshot): Map<string, ArenaRatings> {
+  const out = new Map<string, ArenaRatings>();
+  for (const [id, entries] of Object.entries(data.byModel)) out.set(id, bestRatings(entries));
+  return out;
+}
+
 /**
  * Best LMArena rating per category for every matched OpenRouter id. When a
  * model has several arena rows (modes such as thinking on/off), the highest
@@ -143,8 +149,31 @@ export async function getArenaForModel(id: string): Promise<{ entries: ArenaEntr
  */
 export async function getArenaRatings(): Promise<Map<string, ArenaRatings>> {
   const res = await loadArena();
-  const out = new Map<string, ArenaRatings>();
-  if (!res.ok) return out;
-  for (const [id, entries] of Object.entries(res.byModel)) out.set(id, bestRatings(entries));
-  return out;
+  return res.ok ? ratingsOf(res) : new Map();
+}
+
+class CacheMiss extends Error {}
+
+/**
+ * Like getArenaRatings, but reads only this isolate's memory and the colo
+ * cache, never Hugging Face. null when nothing is cached; the caller can warm
+ * the cache with loadArena() off the request path (for example in after()).
+ * A cold load is about ten Hugging Face requests (1.5s measured), too slow
+ * to hold the home page for.
+ */
+export async function peekArenaRatings(): Promise<Map<string, ArenaRatings> | null> {
+  if (memory) {
+    const ttl = (memory.data.partial ? PARTIAL_TTL_S : TTL_S) * 1000;
+    if (Date.now() - memory.ts < ttl) return ratingsOf(memory.data);
+  }
+  try {
+    const data = await cachedJson<CachedArena>(CACHE_KEY, TTL_S, async () => {
+      throw new CacheMiss();
+    });
+    memory = { data, ts: Date.now() };
+    return ratingsOf(data);
+  } catch (err) {
+    if (!(err instanceof CacheMiss)) unstable_rethrow(err);
+    return null;
+  }
 }

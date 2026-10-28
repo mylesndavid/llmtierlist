@@ -284,7 +284,7 @@ export default async function ComparePairPage({ params }: { params: Promise<{ pa
           note={
             <>
               Balanced preset of the{" "}
-              <Link href="/value" className="underline hover:text-foreground">
+              <Link href="/" className="underline hover:text-foreground">
                 value tier list
               </Link>
             </>

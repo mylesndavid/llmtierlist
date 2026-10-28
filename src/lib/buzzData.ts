@@ -1,10 +1,6 @@
 import "server-only";
-import { unstable_rethrow } from "next/navigation";
-import { getModelsByIds } from "./data";
-import { loadBenchmarks, loadUsage } from "./valueData";
-import { rankUsage } from "./value";
+import { loadValueData, type ValueData } from "./valueLoad";
 import { peekPanels } from "./xPostsData";
-import { d1Available } from "./xPanelStore";
 import { rankScore, type ShownPost } from "./xPosts";
 
 export const BUZZ_MODEL_COUNT = 30;
@@ -37,24 +33,17 @@ function nameFromSlug(id: string): string {
   return id.slice(id.indexOf("/") + 1).replace(/-/g, " ");
 }
 
-/** The most-used models on OpenRouter over 7 days, with catalog names where the catalog has them. */
-export async function topModels(count = BUZZ_MODEL_COUNT): Promise<BuzzModel[]> {
-  const [bench, usage] = await Promise.all([loadBenchmarks(), loadUsage()]);
-  if (!usage.ok) return [];
-  const ranked = [...rankUsage(usage.rows, bench.ok ? bench.permaslugs : {})].slice(0, count);
-  const benchNames = new Map(bench.ok ? bench.models.map((m) => [m.id, m]) : []);
-  let catalog = new Map<string, { name: string; slug: string; vendor_slug: string }>();
-  try {
-    if (!d1Available()) throw new Error("D1 is not configured");
-    const rows = await getModelsByIds(ranked.map(([id]) => id));
-    catalog = new Map(rows.filter((m) => !m.is_custom).map((m) => [m.id, m]));
-  } catch (err) {
-    unstable_rethrow(err);
-    // local dev without D1: fall back to benchmark names
-    console.error("buzz: catalog unavailable:", err instanceof Error ? err.message : err);
-  }
+/**
+ * The most-used models on OpenRouter over 7 days, from the shared value
+ * loader's usage ranking and catalog (D1, or the OpenRouter list without D1),
+ * so names, links and ranks match the home page.
+ */
+export function topModels(value: ValueData, count = BUZZ_MODEL_COUNT): BuzzModel[] {
+  if (!value.usage) return [];
+  const ranked = [...value.usage].slice(0, count);
+  const benchNames = new Map(value.bench.ok ? value.bench.models.map((m) => [m.id, m]) : []);
   return ranked.map(([id, stat]) => {
-    const c = catalog.get(id);
+    const c = value.catalog.byId.get(id);
     const b = benchNames.get(id);
     return {
       id,
@@ -71,8 +60,8 @@ export async function topModels(count = BUZZ_MODEL_COUNT): Promise<BuzzModel[]> 
  * recency. Reads memory, the colo cache and D1 only; models without a fresh
  * panel are returned in `toFill` for the caller to refresh in the background.
  */
-export async function loadBuzz(): Promise<BuzzData> {
-  const models = await topModels();
+export async function loadBuzz(value?: ValueData): Promise<BuzzData> {
+  const models = topModels(value ?? (await loadValueData()));
   const panels = await peekPanels(models.map((m) => m.id));
   const nowS = Date.now() / 1000;
   const items: BuzzItem[] = [];

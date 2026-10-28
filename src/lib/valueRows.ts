@@ -20,9 +20,14 @@ export interface CatalogRef {
   name: string;
   vendor: string;
   vendor_slug: string;
+  /** "open-weights" marks an open-weights model; missing means unknown */
+  license?: string | null;
 }
 
-/** Join benchmark models with the catalog and usage, as the value tier list does. */
+/**
+ * Join benchmark models with the catalog and usage. Models missing from the
+ * catalog keep their benchmark name and get no slug and no license.
+ */
 export function joinValueModels(
   bench: BenchModel[],
   catalog: Map<string, CatalogRef>,
@@ -32,8 +37,16 @@ export function joinValueModels(
     const c = catalog.get(m.id);
     const u = usage?.get(m.id) ?? null;
     return c
-      ? { ...m, name: c.name, vendor: c.vendor, vendorSlug: c.vendor_slug, slug: c.slug, usage: u }
-      : { ...m, slug: null, usage: u };
+      ? {
+          ...m,
+          name: c.name,
+          vendor: c.vendor,
+          vendorSlug: c.vendor_slug,
+          slug: c.slug,
+          usage: u,
+          openWeights: c.license == null ? null : c.license === "open-weights",
+        }
+      : { ...m, slug: null, usage: u, openWeights: null };
   });
 }
 

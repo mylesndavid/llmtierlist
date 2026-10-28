@@ -30,6 +30,19 @@ describe("joinValueModels", () => {
   it("leaves models missing from the catalog unlinked", () => {
     const r = scoreBalanced(joinValueModels(bench, new Map(), null));
     expect(r.models.every((m) => m.model.slug === null && m.model.usage === null)).toBe(true);
+    expect(r.models.every((m) => m.model.openWeights === null)).toBe(true);
+  });
+  it("reads open weights from the catalog license, null when unknown", () => {
+    const [first, second] = bench;
+    const withLicense = new Map<string, CatalogRef>([
+      [first.id, { ...catalog.get(first.id)!, license: "open-weights" }],
+      [second.id, { ...catalog.get(second.id)!, license: "proprietary" }],
+    ]);
+    const joined = new Map(joinValueModels(bench, withLicense, null).map((m) => [m.id, m]));
+    expect(joined.get(first.id)!.openWeights).toBe(true);
+    expect(joined.get(second.id)!.openWeights).toBe(false);
+    // in the catalog without a license field: unknown
+    expect(joinValueModels(bench, catalog, null).every((m) => m.openWeights === null)).toBe(true);
   });
 });
 

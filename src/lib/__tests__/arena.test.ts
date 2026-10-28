@@ -3,7 +3,7 @@ import page from "./fixtures/arena-rows-sample.json";
 import catalog from "./fixtures/or-catalog-sample.json";
 import { bestRatings, buildArenaSnapshot, ciHalfWidth, parseArenaPage } from "../arena";
 import { buildMatchIndex } from "../modelMatch";
-import { getArenaRatings, loadArena, resetArenaMemoryCache } from "../arenaData";
+import { getArenaRatings, loadArena, peekArenaRatings, resetArenaMemoryCache } from "../arenaData";
 import { resetCatalogMemoryCache } from "../openrouterCatalog";
 
 function jsonResponse(body: unknown, status = 200) {
@@ -120,5 +120,19 @@ describe("loadArena", () => {
       throw new TypeError("network down");
     }));
     expect(await loadArena()).toEqual({ ok: false, error: "network down" });
+  });
+
+  it("peeks at cached ratings without fetching", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.startsWith("https://openrouter.ai/api/v1/models") ? jsonResponse(catalog) : jsonResponse(page)
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await peekArenaRatings()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    await loadArena();
+    const calls = fetchMock.mock.calls.length;
+    const peeked = await peekArenaRatings();
+    expect(peeked?.get("openai/gpt-5")?.text).toBeGreaterThan(1000);
+    expect(fetchMock.mock.calls.length).toBe(calls);
   });
 });

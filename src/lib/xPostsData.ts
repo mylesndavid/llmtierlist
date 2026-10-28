@@ -235,11 +235,19 @@ export interface PeekedPanel {
  * Stored panels for many models from memory, the colo cache and D1 only.
  * Never searches or scores. D1 rows past their TTL are returned with
  * `fresh: false` (up to a week old); missing models are left out.
+ *
+ * `edge: false` skips the colo cache, which is one lookup per model; for a
+ * long list (the home table) one batched D1 query is cheaper.
  */
-export async function peekPanels(modelIds: string[]): Promise<Map<string, PeekedPanel>> {
+export async function peekPanels(
+  modelIds: string[],
+  { edge: useEdge = true }: { edge?: boolean } = {}
+): Promise<Map<string, PeekedPanel>> {
   const out = new Map<string, PeekedPanel>();
   const ids = [...new Set(modelIds)];
-  const edge = await Promise.all(ids.map(async (id) => [id, fromMemory(id) ?? (await peekEdge(id))] as const));
+  const edge = await Promise.all(
+    ids.map(async (id) => [id, fromMemory(id) ?? (useEdge ? await peekEdge(id) : null)] as const)
+  );
   const rest: string[] = [];
   for (const [id, panel] of edge) {
     if (panel && isFresh(panel)) {
