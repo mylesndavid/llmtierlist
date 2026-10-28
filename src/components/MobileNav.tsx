@@ -5,6 +5,7 @@ import Link from "next/link";
 
 const LINKS = [
   { href: "/tiers", label: "Official tier list" },
+  { href: "/value", label: "Value tier list" },
   { href: "/tierlists", label: "Community lists" },
   { href: "/models", label: "Models" },
   { href: "/compare", label: "Compare models" },

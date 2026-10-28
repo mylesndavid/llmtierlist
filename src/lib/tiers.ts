@@ -50,14 +50,27 @@ const TIER_CUTOFFS: Array<[Tier, number]> = [
 export function bucketIntoTiers(
   models: ModelWithStats[]
 ): Map<Tier, ModelWithStats[]> {
-  const sorted = [...models].sort(
-    (a, b) => communityScore(b) - communityScore(a) || a.name.localeCompare(b.name)
+  return bucketByScore(models, communityScore, (m) => m.name);
+}
+
+/**
+ * Bucket items into S–F by score percentile (S top 10%, A to 30%, B to 55%,
+ * C to 80%, D to 95%, F the rest). Equal scores always share a tier, and if
+ * every score is equal everything lands in B.
+ */
+export function bucketByScore<T>(
+  items: T[],
+  scoreOf: (item: T) => number,
+  nameOf: (item: T) => string
+): Map<Tier, T[]> {
+  const sorted = [...items].sort(
+    (a, b) => scoreOf(b) - scoreOf(a) || nameOf(a).localeCompare(nameOf(b))
   );
-  const result = new Map<Tier, ModelWithStats[]>([
+  const result = new Map<Tier, T[]>([
     ["S", []], ["A", []], ["B", []], ["C", []], ["D", []], ["F", []],
   ]);
 
-  const scores = sorted.map(communityScore);
+  const scores = sorted.map(scoreOf);
   const allEqual = scores.every((s) => s === scores[0]);
 
   const tierOf = new Map<number, Tier>(); // score -> tier, so ties share
