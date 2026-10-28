@@ -15,6 +15,7 @@ import {
   formatCost,
   formatSeconds,
   presetByKey,
+  type ScoredModel,
   scoreModels,
   type BenchmarkKey,
   type PresetKey,
@@ -31,7 +32,7 @@ function toChipModel(v: ValueModel): Model {
     vendor: v.vendor,
     vendor_slug: v.vendorSlug,
     description: "",
-    license: "proprietary",
+    license: v.openWeights ? "open-weights" : "proprietary",
     release_date: null,
     context_window: null,
     base_model_id: null,
@@ -87,10 +88,13 @@ export default function ValueTierList({
   models,
   initialPreset,
   showUsage,
+  showOpenWeights = false,
 }: {
   models: ValueModel[];
   initialPreset: PresetKey;
   showUsage: boolean;
+  /** license data was available, so the open-weights filter can work */
+  showOpenWeights?: boolean;
 }) {
   const start = presetByKey(initialPreset) ?? presetByKey(DEFAULT_PRESET)!;
   const [preset, setPreset] = useState<PresetKey | null>(start.key);
@@ -99,6 +103,7 @@ export default function ValueTierList({
   const [benchWeights, setBenchWeights] = useState<Record<BenchmarkKey, number>>({
     ...DEFAULT_BENCHMARK_WEIGHTS,
   });
+  const [view, setView] = useState<"table" | "tiers">("table");
 
   const result = useMemo(
     () => scoreModels(models, { costWeight, timeWeight, benchmarkWeights: benchWeights }),
@@ -108,7 +113,9 @@ export default function ValueTierList({
   const placements = useMemo(() => {
     const map = new Map<string, Model[]>();
     for (const [tier, rows] of result.tiers) {
-      const sorted = [...rows].sort((a, b) => a.rank - b.rank);
+      const sorted = [...rows].sort(
+        (a: ScoredModel<ValueModel>, b: ScoredModel<ValueModel>) => a.rank - b.rank
+      );
       map.set(tier, sorted.map((r) => toChipModel(r.model)));
     }
     return map;
@@ -144,109 +151,161 @@ export default function ValueTierList({
   const benchShare = (k: BenchmarkKey) =>
     Math.round((benchTotal > 0 ? benchWeights[k] / benchTotal : 1 / BENCHMARKS.length) * 100);
 
+  const segBtn = (on: boolean) =>
+    `rounded-sm px-3 py-1.5 text-sm ${
+      on ? "bg-foreground font-semibold text-black" : "text-muted hover:text-foreground"
+    }`;
+
   return (
-    <div className="space-y-8">
-      <section className="space-y-4 rounded-sm border border-edge bg-surface p-4">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Weight presets">
-          {PRESETS.map((p) => (
+    <div className="space-y-6">
+      <section className="space-y-2" aria-label="Weighting">
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="flex flex-wrap gap-1 rounded-sm border border-edge bg-surface p-1"
+            role="group"
+            aria-label="Weight presets"
+          >
+            {PRESETS.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                aria-pressed={preset === p.key}
+                onClick={() => choosePreset(p.key)}
+                className={segBtn(preset === p.key)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {preset == null && <span className="text-xs text-muted">Custom weights</span>}
+        </div>
+        <details className="group rounded-sm border border-edge bg-surface">
+          <summary className="cursor-pointer select-none px-3 py-2 text-sm text-muted hover:text-foreground">
+            Customize weights
+          </summary>
+          <div className="grid gap-4 border-t border-edge p-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Slider label="Cost weight" value={costWeight} max={15} step={1} onChange={custom(setCostWeight)} />
+            <Slider label="Time weight" value={timeWeight} max={15} step={1} onChange={custom(setTimeWeight)} />
+            {BENCHMARKS.map((b) => (
+              <Slider
+                key={b.key}
+                label={`${b.label} weight`}
+                value={benchWeights[b.key]}
+                max={3}
+                step={0.5}
+                onChange={custom((v: number) => setBenchWeights((w) => ({ ...w, [b.key]: v })))}
+              />
+            ))}
+          </div>
+        </details>
+      </section>
+
+      <section className="space-y-2" aria-labelledby="scatter-heading">
+        <h2 id="scatter-heading" className="sr-only">
+          Quality against cost
+        </h2>
+        <ValueScatter
+          rows={result.models}
+          showUsage={showUsage}
+          labelFrontier
+          heightClass="h-[340px] sm:h-[460px] lg:h-[520px]"
+        />
+        <p className="text-xs text-muted">
+          Each point is a model. The line joins the frontier: models no other model beats on
+          quality for less money. Faded points are beaten on both.
+        </p>
+      </section>
+
+      <section className="space-y-3" aria-labelledby="models-heading">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="models-heading" className="text-lg font-semibold">
+            All models
+          </h2>
+          <div className="flex gap-1 rounded-sm border border-edge bg-surface p-1" role="group" aria-label="View">
             <button
-              key={p.key}
               type="button"
-              aria-pressed={preset === p.key}
-              onClick={() => choosePreset(p.key)}
-              className={`rounded-sm border px-3 py-1.5 text-sm ${
-                preset === p.key
-                  ? "border-foreground bg-foreground font-semibold text-black"
-                  : "border-edge text-muted hover:text-foreground"
-              }`}
+              aria-pressed={view === "table"}
+              onClick={() => setView("table")}
+              className={segBtn(view === "table")}
             >
-              {p.label}
+              Table
             </button>
-          ))}
-          {preset == null && (
-            <span className="self-center text-xs text-muted">Custom weights</span>
-          )}
+            <button
+              type="button"
+              aria-pressed={view === "tiers"}
+              onClick={() => setView("tiers")}
+              className={segBtn(view === "tiers")}
+            >
+              Tiers
+            </button>
+          </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Slider label="Cost weight" value={costWeight} max={15} step={1} onChange={custom(setCostWeight)} />
-          <Slider label="Time weight" value={timeWeight} max={15} step={1} onChange={custom(setTimeWeight)} />
-          {BENCHMARKS.map((b) => (
-            <Slider
-              key={b.key}
-              label={`${b.label} weight`}
-              value={benchWeights[b.key]}
-              max={3}
-              step={0.5}
-              onChange={custom((v: number) => setBenchWeights((w) => ({ ...w, [b.key]: v })))}
-            />
-          ))}
+        {/* The table stays mounted while hidden so its search, filters and page survive a view switch. */}
+        <div hidden={view !== "table"}>
+          <ValueTable
+            rows={result.models}
+            showUsage={showUsage}
+            medianTimeS={result.medianTimeS}
+            showOpenWeights={showOpenWeights}
+          />
         </div>
-      </section>
-
-      <FullscreenBoard title="The value tier list">
-        <TierBoard placements={placements} />
-      </FullscreenBoard>
-
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Quality against cost</h2>
-        <p className="text-sm text-muted">
-          Each point is a model. Points on the line are the frontier: no other
-          model scores higher for less. Faded points are beaten on both.
-        </p>
-        <ValueScatter rows={result.models} showUsage={showUsage} />
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">All models</h2>
-        <ValueTable rows={result.models} showUsage={showUsage} />
-      </section>
-
-      <section className="space-y-2 text-sm text-muted">
-        <h2 className="text-lg font-semibold text-foreground">How it&apos;s scored</h2>
-        <p>
-          Only models with results on both {BENCHMARKS.map((b) => b.label).join(" and ")} are
-          included ({result.models.length} models). Results come from OpenRouter&apos;s default
-          routing where available; otherwise from an average of the providers it tested, weighted
-          by number of questions (marked with *).
-        </p>
-        <p>
-          Quality (Q) is each model&apos;s percentile rank on each benchmark, using the
-          adjusted accuracy described below, 0 to 100, averaged
-          with weights {BENCHMARKS.map((b) => `${b.short} ${benchShare(b.key)}%`).join(", ")}.
-        </p>
-        <p>
-          Cost and time are the geometric means across the two benchmarks of the average cost and
-          generation time per task. The median model costs {formatCost(result.medianCost)} and
-          takes {formatSeconds(result.medianTimeS)} per task.
-        </p>
-        <p className="font-mono text-foreground">
-          score = Q − {costWeight} × log2(cost ÷ median cost) − {timeWeight} × log2(time ÷ median
-          time)
-        </p>
-        <p>
-          So each doubling of cost above the median takes {costWeight} points off, and each
-          doubling of time takes {timeWeight}. Being cheaper or faster than the median adds the
-          same amount. If a model has no cost or time data, that term is left out.
-        </p>
-        <p>
-          Tiers split the ranking by percentile: S is the top 10%, A to 30%, B to 55%, C to 80%, D
-          to 95%, F the rest. Models with equal scores share a tier.
-        </p>
-        <p>
-          Scores from few tasks are pulled toward the benchmark average before ranking, so a lucky small sample can&apos;t top the list. Each accuracy is blended
-          with the benchmark&apos;s average as if that average had been measured on{" "}
-          {SHRINK_TASKS} more tasks, so a result from 50 tasks moves two thirds of the way to the
-          average and one from 2,000 tasks barely moves. Results whose 95% interval is wider than
-          ±5 points are marked with †; the mark is information only.
-        </p>
-        {showUsage && (
-          <p>
-            Usage is total tokens on OpenRouter over the last {USAGE_DAYS} days, ranked against
-            every model in OpenRouter&apos;s daily top list. Variants such as :free count toward
-            their model. It is shown for context and does not affect the score.
-          </p>
+        {view === "tiers" && (
+          <FullscreenBoard title="The value tier list">
+            <TierBoard placements={placements} />
+          </FullscreenBoard>
         )}
       </section>
+
+      <details className="rounded-sm border border-edge bg-surface text-sm text-muted">
+        <summary className="cursor-pointer select-none px-3 py-2 font-semibold text-foreground">
+          How the score works
+        </summary>
+        <div className="space-y-2 border-t border-edge p-3">
+          <p>
+            Only models with results on both {BENCHMARKS.map((b) => b.label).join(" and ")} are
+            included ({result.models.length} models). Results come from OpenRouter&apos;s default
+            routing where available; otherwise from an average of the providers it tested, weighted
+            by number of questions (marked with *).
+          </p>
+          <p>
+            Quality (Q) is each model&apos;s percentile rank on each benchmark, using the
+            adjusted accuracy described below, 0 to 100, averaged
+            with weights {BENCHMARKS.map((b) => `${b.short} ${benchShare(b.key)}%`).join(", ")}.
+          </p>
+          <p>
+            Cost and time are the geometric means across the two benchmarks of the average cost and
+            generation time per task. The median model costs {formatCost(result.medianCost)} and
+            takes {formatSeconds(result.medianTimeS)} per task.
+          </p>
+          <p className="font-mono text-foreground">
+            score = Q − {costWeight} × log2(cost ÷ median cost) − {timeWeight} × log2(time ÷ median
+            time)
+          </p>
+          <p>
+            So each doubling of cost above the median takes {costWeight} points off, and each
+            doubling of time takes {timeWeight}. Being cheaper or faster than the median adds the
+            same amount. If a model has no cost or time data, that term is left out.
+          </p>
+          <p>
+            Tiers split the ranking by percentile: S is the top 10%, A to 30%, B to 55%, C to 80%, D
+            to 95%, F the rest. Models with equal scores share a tier.
+          </p>
+          <p>
+            Scores from few tasks are pulled toward the benchmark average before ranking, so a lucky small sample can&apos;t top the list. Each accuracy is blended
+            with the benchmark&apos;s average as if that average had been measured on{" "}
+            {SHRINK_TASKS} more tasks, so a result from 50 tasks moves two thirds of the way to the
+            average and one from 2,000 tasks barely moves. Results whose 95% interval is wider than
+            ±5 points are marked with †; the mark is information only.
+          </p>
+          {showUsage && (
+            <p>
+              Usage is total tokens on OpenRouter over the last {USAGE_DAYS} days, ranked against
+              every model in OpenRouter&apos;s daily top list. Variants such as :free count toward
+              their model. It is shown for context and does not affect the score.
+            </p>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

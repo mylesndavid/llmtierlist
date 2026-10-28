@@ -449,6 +449,18 @@ export interface ValueModel extends BenchModel {
   slug: string | null;
   /** 7-day OpenRouter usage; null when outside the published top list (or usage is unavailable) */
   usage: UsageStat | null;
+  /** from the catalog's license; null when the model is not in the catalog */
+  openWeights?: boolean | null;
+  /** community sentiment (from getCachedSentiment); undefined until wired in, null when there is none */
+  sentiment?: SentimentStat | null;
+  /** Arena rating (from getArenaRatings); undefined until wired in, null when unrated */
+  arena?: number | null;
+}
+
+export interface SentimentStat {
+  positivePct: number;
+  negativePct: number;
+  n: number;
 }
 
 /** One row of OpenRouter's rankings-daily dataset. */
