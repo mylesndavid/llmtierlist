@@ -21,6 +21,9 @@ import { getValueHistory } from "@/lib/valueHistory";
 import SpecGrid from "@/components/SpecGrid";
 import ExpandableText from "@/components/ExpandableText";
 import XPosts, { XPostsSkeleton } from "@/components/XPosts";
+import ArenaRatings from "@/components/ArenaRatings";
+import EpochBenchmarks from "@/components/EpochBenchmarks";
+import ProviderStats from "@/components/ProviderStats";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +122,17 @@ export default async function ModelPage({
 
       <Suspense fallback={<XPostsSkeleton />}>
         <XPosts model={{ id: model.id, name: model.name }} />
+      </Suspense>
+
+      {/* Outside data: each section renders nothing when its source has no data. */}
+      <Suspense fallback={null}>
+        <ArenaRatings modelId={model.id} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <EpochBenchmarks modelId={model.id} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ProviderStats modelId={model.id} />
       </Suspense>
 
       <section className="space-y-4">

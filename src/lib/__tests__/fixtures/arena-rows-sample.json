@@ -1,0 +1,250 @@
+{
+ "features": [
+  {
+   "feature_idx": 0,
+   "name": "model_name",
+   "type": {
+    "dtype": "string",
+    "_type": "Value"
+   }
+  },
+  {
+   "feature_idx": 1,
+   "name": "organization",
+   "type": {
+    "dtype": "string",
+    "_type": "Value"
+   }
+  },
+  {
+   "feature_idx": 2,
+   "name": "license",
+   "type": {
+    "dtype": "string",
+    "_type": "Value"
+   }
+  },
+  {
+   "feature_idx": 3,
+   "name": "rating",
+   "type": {
+    "dtype": "float64",
+    "_type": "Value"
+   }
+  },
+  {
+   "feature_idx": 4,
+   "name": "rating_lower",
+   "type": {
+    "dtype": "float64",
+    "_type": "Value"
+   }
+  },
+  {
+   "feature_idx": 5,
+   "name": "rating_upper",
+   "type": {
+    "dtype": "float64",
+    "_type": "Value"
+   }
+  },
+  {
+   "feature_idx": 6,
+   "name": "variance",
+   "type": {
+    "dtype": "float64",
+    "_type": "Value"
+   }
+  },
+  {
+   "feature_idx": 7,
+   "name": "vote_count",
+   "type": {
+    "dtype": "float64",
+    "_type": "Value"
+   }
+  },
+  {
+   "feature_idx": 8,
+   "name": "rank",
+   "type": {
+    "dtype": "float64",
+    "_type": "Value"
+   }
+  },
+  {
+   "feature_idx": 9,
+   "name": "category",
+   "type": {
+    "dtype": "string",
+    "_type": "Value"
+   }
+  },
+  {
+   "feature_idx": 10,
+   "name": "leaderboard_publish_date",
+   "type": {
+    "dtype": "string",
+    "_type": "Value"
+   }
+  }
+ ],
+ "rows": [
+  {
+   "row_idx": 0,
+   "row": {
+    "model_name": "Gemini 2.5 Pro",
+    "organization": "google",
+    "license": "Proprietary",
+    "rating": 1457.7621598714277,
+    "rating_lower": 1455.327726362671,
+    "rating_upper": 1460.1965933801844,
+    "variance": 1.542764555129632,
+    "vote_count": 125316,
+    "rank": 42,
+    "category": "overall",
+    "leaderboard_publish_date": "2026-10-22"
+   },
+   "truncated_cells": []
+  },
+  {
+   "row_idx": 1,
+   "row": {
+    "model_name": "Claude Opus 4.5 (20251101)",
+    "organization": "anthropic",
+    "license": "Proprietary",
+    "rating": 1450.9498501946891,
+    "rating_lower": 1447.844026727007,
+    "rating_upper": 1454.0556736623712,
+    "variance": 2.5110615166408143,
+    "vote_count": 72850,
+    "rank": 50,
+    "category": "overall",
+    "leaderboard_publish_date": "2026-10-22"
+   },
+   "truncated_cells": []
+  },
+  {
+   "row_idx": 2,
+   "row": {
+    "model_name": "Claude Opus 4.5 (High, 32K, 20251101)",
+    "organization": "anthropic",
+    "license": "Proprietary",
+    "rating": 1448.1348654231856,
+    "rating_lower": 1444.3083969095624,
+    "rating_upper": 1451.9613339368084,
+    "variance": 3.8115367023773756,
+    "vote_count": 37485,
+    "rank": 56,
+    "category": "overall",
+    "leaderboard_publish_date": "2026-10-22"
+   },
+   "truncated_cells": []
+  },
+  {
+   "row_idx": 3,
+   "row": {
+    "model_name": "Qwen3-235B-A22B-Instruct (2507)",
+    "organization": "alibaba",
+    "license": "Apache 2.0",
+    "rating": 1419.172957258761,
+    "rating_lower": 1416.6382763940023,
+    "rating_upper": 1421.7076381235202,
+    "variance": 1.6724394002519656,
+    "vote_count": 98096,
+    "rank": 122,
+    "category": "overall",
+    "leaderboard_publish_date": "2026-10-22"
+   },
+   "truncated_cells": []
+  },
+  {
+   "row_idx": 4,
+   "row": {
+    "model_name": "GPT-5 (High)",
+    "organization": "openai",
+    "license": "Proprietary",
+    "rating": 1406.226436118794,
+    "rating_lower": 1401.8056295773877,
+    "rating_upper": 1410.6472426602,
+    "variance": 5.087528303377376,
+    "vote_count": 31712,
+    "rank": 146,
+    "category": "overall",
+    "leaderboard_publish_date": "2026-10-22"
+   },
+   "truncated_cells": []
+  },
+  {
+   "row_idx": 5,
+   "row": {
+    "model_name": "DeepSeek-R1",
+    "organization": "deepseek",
+    "license": "MIT",
+    "rating": 1372.6579080655752,
+    "rating_lower": 1367.8108200925603,
+    "rating_upper": 1377.5049960385902,
+    "variance": 6.115973882521301,
+    "vote_count": 18524,
+    "rank": 183,
+    "category": "overall",
+    "leaderboard_publish_date": "2026-10-22"
+   },
+   "truncated_cells": []
+  },
+  {
+   "row_idx": 6,
+   "row": {
+    "model_name": "Mistral Large (2411)",
+    "organization": "mistral",
+    "license": "MRL",
+    "rating": 1265.290572094676,
+    "rating_lower": 1260.8543532866956,
+    "rating_upper": 1269.7267909026566,
+    "variance": 5.123063458669142,
+    "vote_count": 28073,
+    "rank": 286,
+    "category": "overall",
+    "leaderboard_publish_date": "2026-10-22"
+   },
+   "truncated_cells": []
+  },
+  {
+   "row_idx": 418,
+   "row": {
+    "model_name": "Gemini 4 Argon (High)",
+    "organization": "google",
+    "license": "Proprietary",
+    "rating": 1600.2119239525168,
+    "rating_lower": 1577.6439482296096,
+    "rating_upper": 1622.7798996754245,
+    "variance": 132.58336272825474,
+    "vote_count": 737.0,
+    "rank": 1.0,
+    "category": "chinese",
+    "leaderboard_publish_date": "2026-10-22"
+   },
+   "truncated_cells": []
+  },
+  {
+   "row_idx": 419,
+   "row": {
+    "model_name": "Claude Fable 5.1 (Max)",
+    "organization": "anthropic",
+    "license": "Proprietary",
+    "rating": 1583.6459426119873,
+    "rating_lower": 1566.1141101062371,
+    "rating_upper": 1601.1777751177374,
+    "variance": 80.01261118663805,
+    "vote_count": 1252.0,
+    "rank": 2.0,
+    "category": "chinese",
+    "leaderboard_publish_date": "2026-10-22"
+   },
+   "truncated_cells": []
+  }
+ ],
+ "num_rows_total": 11099,
+ "num_rows_per_page": 100,
+ "partial": false
+}

@@ -1,13 +1,19 @@
 import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import { cachedJson } from "./edgeCache";
+import type { MatchCandidate } from "./modelMatch";
 import { dedupeListings, isoDay, perMillion, slugify, splitDisplayName, type ORModel } from "./newReleases";
 import type { ModelWithStats } from "./types";
 
-/** OpenRouter's public model list (no auth). */
+/**
+ * OpenRouter's public model list (no auth). D1's catalog is synced from the
+ * same list. One fetch and one cache entry serve every use: /new and the
+ * D1-less catalog fallback read the trimmed models, and the outside-source
+ * matchers (Arena, Epoch) read them as match candidates.
+ */
 export const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 
-const CACHE_KEY = "openrouter-models-v1";
+const CACHE_KEY = "openrouter-models-v2";
 const TTL_S = 6 * 60 * 60;
 
 export type ORModelsLoad = { ok: true; models: ORModel[] } | { ok: false; error: string };
@@ -36,25 +42,44 @@ async function fetchModels(): Promise<ORModel[]> {
   });
   if (!res.ok) throw new Error(`${OPENROUTER_MODELS_URL} returned ${res.status}`);
   const body = (await res.json()) as { data?: ORModel[] };
-  if (!Array.isArray(body.data) || body.data.length === 0) throw new Error("OpenRouter model list is empty");
-  return body.data.filter((m) => m && typeof m.id === "string" && typeof m.name === "string").map(trim);
+  if (!Array.isArray(body.data)) throw new Error("OpenRouter model list has no data");
+  const models = body.data.filter((m) => m && typeof m.id === "string" && typeof m.name === "string").map(trim);
+  if (models.length === 0) throw new Error("OpenRouter model list is empty");
+  return models;
 }
 
 let memory: { data: ORModel[]; ts: number } | null = null;
 
+export function resetCatalogMemoryCache() {
+  memory = null;
+}
+
+/** The trimmed OpenRouter model list, cached 6h. Throws on failure. */
+async function getModels(): Promise<ORModel[]> {
+  if (memory && Date.now() - memory.ts < TTL_S * 1000) return memory.data;
+  const data = await cachedJson(CACHE_KEY, TTL_S, fetchModels);
+  memory = { data, ts: Date.now() };
+  return data;
+}
+
 /** The OpenRouter model list, cached 6h. Never throws. */
 export async function loadOpenRouterModels(): Promise<ORModelsLoad> {
-  if (memory && Date.now() - memory.ts < TTL_S * 1000) return { ok: true, models: memory.data };
   try {
-    const data = await cachedJson(CACHE_KEY, TTL_S, fetchModels);
-    memory = { data, ts: Date.now() };
-    return { ok: true, models: data };
+    return { ok: true, models: await getModels() };
   } catch (err) {
     unstable_rethrow(err);
     const error = err instanceof Error ? err.message : String(err);
     console.error("openrouter catalog unavailable:", error);
     return { ok: false, error };
   }
+}
+
+/**
+ * The OpenRouter list as match candidates for outside sources. Throws on
+ * failure; callers catch.
+ */
+export async function loadMatchCandidates(): Promise<MatchCandidate[]> {
+  return (await getModels()).map((m) => ({ id: m.id, name: m.name }));
 }
 
 /**
