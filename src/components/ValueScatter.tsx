@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   formatCost,
+  formatUsage,
+  isThin,
+  sampleLabel,
   formatPct,
   formatSeconds,
   formatTokens,
@@ -32,7 +35,7 @@ function tickLabel(v: number): string {
 }
 
 /** Quality (y) against log cost per task (x), with the Pareto frontier drawn as a line. */
-export default function ValueScatter({ rows }: { rows: Row[] }) {
+export default function ValueScatter({ rows, showUsage }: { rows: Row[]; showUsage: boolean }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(720);
   const [active, setActive] = useState<string | null>(null);
@@ -199,7 +202,7 @@ export default function ValueScatter({ rows }: { rows: Row[] }) {
           className="pointer-events-none absolute z-10 w-56 rounded-sm border border-edge bg-surface-2 p-2 text-xs shadow-lg shadow-black/40"
           style={{
             left: Math.max(8, Math.min(geo.x(activeRow.cost!) + 20, width - 224)),
-            top: Math.max(8, Math.min(geo.y(activeRow.quality) + 36, height - 140)),
+            top: Math.max(8, Math.min(geo.y(activeRow.quality) + 36, height - 250)),
           }}
         >
           <p className="font-semibold text-foreground">{activeRow.model.name}</p>
@@ -209,10 +212,12 @@ export default function ValueScatter({ rows }: { rows: Row[] }) {
             <dt>GPQA</dt>
             <dd className="text-right font-mono text-foreground">
               {formatPct(activeRow.model.metrics.gpqa_diamond!.accuracy)}
+              {isThin(activeRow.model.metrics.gpqa_diamond!) && " †"}
             </dd>
             <dt>τ²-bench</dt>
             <dd className="text-right font-mono text-foreground">
               {formatPct(activeRow.model.metrics.tau_bench_verified_airline!.accuracy)}
+              {isThin(activeRow.model.metrics.tau_bench_verified_airline!) && " †"}
             </dd>
             <dt>Cost/task</dt>
             <dd className="text-right font-mono text-foreground">{formatCost(activeRow.cost)}</dd>
@@ -220,7 +225,27 @@ export default function ValueScatter({ rows }: { rows: Row[] }) {
             <dd className="text-right font-mono text-foreground">{formatSeconds(activeRow.timeS)}</dd>
             <dt>Tokens/task</dt>
             <dd className="text-right font-mono text-foreground">{formatTokens(activeRow.tokens)}</dd>
+            {showUsage && (
+              <>
+                <dt>Usage (7d)</dt>
+                <dd className="text-right font-mono text-foreground">
+                  {activeRow.model.usage ? formatUsage(activeRow.model.usage) : "—"}
+                </dd>
+              </>
+            )}
           </dl>
+          {activeRow.thin.map((k) => (
+            <p key={k} className="mt-1 text-muted">
+              † Thin {k === "gpqa_diamond" ? "GPQA" : "τ²"} sample: {sampleLabel(activeRow.model.metrics[k]!)}.
+              Ranked as {formatPct(activeRow.adjusted[k])}.
+            </p>
+          ))}
+          {activeRow.thin.length > 0 && (
+            <p className="mt-1 text-muted">
+              Scores from few tasks are pulled toward the benchmark average before ranking, so a
+              lucky small sample can&apos;t top the list.
+            </p>
+          )}
           <p className="mt-1 text-muted">
             {activeRow.frontier
               ? "Frontier"

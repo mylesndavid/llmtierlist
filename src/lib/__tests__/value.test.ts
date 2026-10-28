@@ -39,6 +39,8 @@ function model(id: string, gpqa: [number, number, number], tau: [number, number,
     durationMs,
     outputTokens: 1000,
     pinned: false,
+    runs: 5,
+    tasks: 500,
   });
   return {
     id,

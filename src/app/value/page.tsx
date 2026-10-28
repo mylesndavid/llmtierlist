@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { getBaseModelsWithStats } from "@/lib/data";
-import { loadBenchmarks } from "@/lib/valueData";
-import { BENCHMARKS, DEFAULT_PRESET, presetByKey, type ValueModel } from "@/lib/value";
+import { loadBenchmarks, loadUsage } from "@/lib/valueData";
+import { BENCHMARKS, DEFAULT_PRESET, presetByKey, rankUsage, type ValueModel } from "@/lib/value";
 import type { ModelWithStats } from "@/lib/types";
 import ValueTierList from "@/components/ValueTierList";
 
@@ -29,19 +29,23 @@ export default async function ValueTiersPage({
 }: {
   searchParams: Promise<{ preset?: string | string[] }>;
 }) {
-  const [{ preset }, bench, catalog] = await Promise.all([
+  const [{ preset }, bench, catalog, usageLoad] = await Promise.all([
     searchParams,
     loadBenchmarks(),
     catalogById(),
+    loadUsage(),
   ]);
   const initialPreset = presetByKey(typeof preset === "string" ? preset : null)?.key ?? DEFAULT_PRESET;
+
+  const usage = bench.ok && usageLoad.ok ? rankUsage(usageLoad.rows, bench.permaslugs) : null;
 
   const models: ValueModel[] = bench.ok
     ? bench.models.map((m) => {
         const c = catalog.get(m.id);
+        const u = usage?.get(m.id) ?? null;
         return c
-          ? { ...m, name: c.name, vendor: c.vendor, vendorSlug: c.vendor_slug, slug: c.slug }
-          : { ...m, slug: null };
+          ? { ...m, name: c.name, vendor: c.vendor, vendorSlug: c.vendor_slug, slug: c.slug, usage: u }
+          : { ...m, slug: null, usage: u };
       })
     : [];
 
@@ -56,7 +60,7 @@ export default async function ValueTiersPage({
       </div>
 
       {bench.ok ? (
-        <ValueTierList models={models} initialPreset={initialPreset} />
+        <ValueTierList models={models} initialPreset={initialPreset} showUsage={usage != null} />
       ) : (
         <div className="rounded-sm border border-edge bg-surface p-6 text-sm">
           <p className="font-semibold">Benchmark data unavailable</p>
@@ -89,6 +93,22 @@ export default async function ValueTiersPage({
           </span>
         ))}
         .
+        {usageLoad.ok && (
+          <>
+            {" "}Usage:{" "}
+            <a href="https://openrouter.ai/rankings" className="underline hover:text-foreground">
+              OpenRouter rankings
+            </a>
+            ,{" "}
+            <a
+              href="https://creativecommons.org/licenses/by/4.0/"
+              className="underline hover:text-foreground"
+            >
+              CC BY 4.0
+            </a>
+            , snapshot {usageLoad.snapshotDate}.
+          </>
+        )}
       </p>
     </div>
   );
