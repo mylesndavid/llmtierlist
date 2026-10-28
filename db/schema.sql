@@ -254,3 +254,13 @@ create table if not exists value_snapshots (
   primary key (day, model_id)
 );
 create index if not exists vs_model_idx on value_snapshots (model_id, day);
+
+-- Stored "What people are saying" panels: X posts about a model, scored by
+-- Jev, refreshed at most every 12h (1h when unscored). `payload` is the JSON
+-- panel (posts, counts, scored, fetchedAt).
+create table if not exists x_panels (
+  model_id text primary key,
+  fetched_at text not null,
+  scored integer not null,
+  payload text not null
+);
