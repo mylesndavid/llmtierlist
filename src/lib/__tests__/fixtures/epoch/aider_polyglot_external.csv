@@ -1,0 +1,3 @@
+Model version,Percent correct,Release date,Organization,Country,Training compute (FLOP),Training compute notes,Percent using correct edit format,Edit format,Cost,Source,Source link,Notes,Time per case (seconds),Date of evaluation,id
+gpt-5-2025-08-07_low,81.3,2025-08-07,OpenAI,United States of America,6.6e+25,"Fairly speculative, possibly around 6e25 [CI: 2e25 to 2e26] FLOP. See document below for details
+gpt-5-2025-08-07_medium,86.7,2025-08-07,OpenAI,United States of America,6.6e+25,"Fairly speculative, possibly around 6e25 [CI: 2e25 to 2e26] FLOP. See document below for details
