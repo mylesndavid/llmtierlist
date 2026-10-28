@@ -235,3 +235,13 @@ create table if not exists tier_list_versions (
   primary key (tier_list_id, version)
 );
 create index if not exists tlv_list_idx on tier_list_versions (tier_list_id, version desc);
+
+-- Stored "What people are saying" panels: X posts about a model, scored by
+-- Jev, refreshed at most every 12h (1h when unscored). `payload` is the JSON
+-- panel (posts, counts, scored, fetchedAt).
+create table if not exists x_panels (
+  model_id text primary key,
+  fetched_at text not null,
+  scored integer not null,
+  payload text not null
+);
